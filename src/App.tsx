@@ -11,6 +11,7 @@ import TicketDetailPage from './pages/TicketDetailPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminTicketDetailPage from './pages/AdminTicketDetailPage';
+import SearchPage from './pages/SearchPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/tickets/:id" element={<AdminTicketDetailPage />} />
+            <Route path="/search" element={<SearchPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>

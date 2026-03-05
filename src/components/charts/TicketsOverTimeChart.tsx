@@ -18,7 +18,7 @@ export default function TicketsOverTimeChart({ tickets }: { tickets: Ticket[] })
   return (
     <ResponsiveContainer width="100%" height={250}>
       <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
         <XAxis
           dataKey="date"
           tick={{ fontSize: 12, fill: '#9ca3af' }}
@@ -31,8 +31,10 @@ export default function TicketsOverTimeChart({ tickets }: { tickets: Ticket[] })
         <Tooltip
           contentStyle={{
             borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+            background: '#1a1a1f',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.3)',
+            color: '#e5e7eb',
           }}
         />
         <Line

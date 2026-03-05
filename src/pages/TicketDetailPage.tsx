@@ -41,7 +41,7 @@ export default function TicketDetailPage() {
       <AnimatedPage>
         <div className="max-w-3xl mx-auto px-4 py-8 text-center">
           <p className="text-gray-500">Ticket not found.</p>
-          <Link to="/" className="text-sm text-crane-dark hover:text-crane mt-2 inline-block">
+          <Link to="/" className="text-sm text-crane hover:text-crane-light mt-2 inline-block">
             Back to home
           </Link>
         </div>
@@ -54,8 +54,8 @@ export default function TicketDetailPage() {
       <AnimatedPage>
         <div className="max-w-md mx-auto px-4 py-16">
           <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Verify your identity</h2>
-            <p className="text-sm text-gray-500 mb-4">
+            <h2 className="text-lg font-semibold text-white mb-4">Verify your identity</h2>
+            <p className="text-sm text-gray-400 mb-4">
               Enter the email you used when submitting this ticket.
             </p>
             <form onSubmit={handleVerify} className="space-y-4">
@@ -72,7 +72,7 @@ export default function TicketDetailPage() {
               </button>
             </form>
             <div className="mt-4 text-center">
-              <Link to="/login" className="text-sm text-crane-dark hover:text-crane">
+              <Link to="/login" className="text-sm text-crane hover:text-crane-light">
                 Or sign in to your account
               </Link>
             </div>
@@ -85,7 +85,7 @@ export default function TicketDetailPage() {
   return (
     <AnimatedPage>
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <Link to="/" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6 no-underline">
+        <Link to="/" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300 mb-6 no-underline">
           <ArrowLeft size={14} />
           Back to home
         </Link>

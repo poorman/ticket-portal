@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Plus, LayoutDashboard, Shield, LogOut, LogIn, UserPlus } from 'lucide-react';
+import { Menu, X, Plus, LayoutDashboard, Shield, LogOut, LogIn, UserPlus, Search } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function Navbar() {
@@ -14,79 +14,67 @@ export default function Navbar() {
     setMobileOpen(false);
   };
 
+  const navLink = "flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.06] transition-all no-underline";
+
   return (
-    <nav className="bg-gray-900 text-white sticky top-0 z-50 shadow-lg">
+    <nav className="sticky top-0 z-50 bg-[#0f0f11]/80 backdrop-blur-2xl border-b border-white/[0.06]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14">
           <Link to="/" className="flex items-center gap-3 no-underline">
             <div className="w-8 h-8 rounded-lg bg-crane flex items-center justify-center font-bold text-gray-900 text-sm">
               CN
             </div>
-            <span className="font-semibold text-white text-lg hidden sm:block">
+            <span className="font-semibold text-white text-base hidden sm:block">
               Crane Network
             </span>
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1">
-            <Link
-              to="/submit"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors no-underline"
-            >
-              <Plus size={16} />
+          <div className="hidden md:flex items-center gap-0.5">
+            <Link to="/submit" className={navLink}>
+              <Plus size={15} />
               New Ticket
             </Link>
-            <Link
-              to="/track"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors no-underline"
-            >
-              Track Ticket
+            <Link to="/search" className={navLink}>
+              <Search size={15} />
+              Knowledge Base
+            </Link>
+            <Link to="/track" className={navLink}>
+              Track
             </Link>
             {isLoggedIn && (
-              <Link
-                to="/dashboard"
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors no-underline"
-              >
-                <LayoutDashboard size={16} />
+              <Link to="/dashboard" className={navLink}>
+                <LayoutDashboard size={15} />
                 Dashboard
               </Link>
             )}
             {isAdmin && (
               <Link
                 to="/admin"
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-crane hover:text-crane-light hover:bg-gray-800 transition-colors no-underline"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-crane hover:text-crane-light hover:bg-white/[0.06] transition-all no-underline"
               >
-                <Shield size={16} />
+                <Shield size={15} />
                 Admin
               </Link>
             )}
 
-            <div className="w-px h-6 bg-gray-700 mx-2" />
+            <div className="w-px h-5 bg-white/[0.08] mx-2" />
 
             {isLoggedIn ? (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-400">{user?.name}</span>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
-                >
-                  <LogOut size={16} />
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">{user?.name}</span>
+                <button onClick={handleLogout} className="btn-ghost p-2 rounded-lg">
+                  <LogOut size={15} className="text-gray-500 hover:text-white" />
                 </button>
               </div>
             ) : (
               <>
-                <Link
-                  to="/login"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors no-underline"
-                >
-                  <LogIn size={16} />
+                <Link to="/login" className={navLink}>
+                  <LogIn size={15} />
                   Login
                 </Link>
-                <Link
-                  to="/register"
-                  className="btn btn-primary btn-sm no-underline"
-                >
-                  <UserPlus size={14} />
+                <Link to="/register" className="btn btn-primary btn-sm no-underline ml-1">
+                  <UserPlus size={13} />
                   Register
                 </Link>
               </>
@@ -96,7 +84,7 @@ export default function Navbar() {
           {/* Mobile toggle */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+            className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors"
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -105,62 +93,44 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-gray-800 px-4 py-3 space-y-1">
-          <Link
-            to="/submit"
-            onClick={() => setMobileOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 no-underline"
-          >
-            <Plus size={16} /> New Ticket
+        <div className="md:hidden border-t border-white/[0.06] px-4 py-3 space-y-1 bg-[#0f0f11]/95 backdrop-blur-2xl">
+          <Link to="/submit" onClick={() => setMobileOpen(false)} className={navLink}>
+            <Plus size={15} /> New Ticket
           </Link>
-          <Link
-            to="/track"
-            onClick={() => setMobileOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 no-underline"
-          >
+          <Link to="/search" onClick={() => setMobileOpen(false)} className={navLink}>
+            <Search size={15} /> Knowledge Base
+          </Link>
+          <Link to="/track" onClick={() => setMobileOpen(false)} className={navLink}>
             Track Ticket
           </Link>
           {isLoggedIn && (
-            <Link
-              to="/dashboard"
-              onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 no-underline"
-            >
-              <LayoutDashboard size={16} /> Dashboard
+            <Link to="/dashboard" onClick={() => setMobileOpen(false)} className={navLink}>
+              <LayoutDashboard size={15} /> Dashboard
             </Link>
           )}
           {isAdmin && (
-            <Link
-              to="/admin"
-              onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-crane hover:text-crane-light hover:bg-gray-800 no-underline"
+            <Link to="/admin" onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-crane hover:text-crane-light hover:bg-white/[0.06] no-underline"
             >
-              <Shield size={16} /> Admin
+              <Shield size={15} /> Admin
             </Link>
           )}
-          <div className="border-t border-gray-800 pt-2 mt-2">
+          <div className="border-t border-white/[0.06] pt-2 mt-2">
             {isLoggedIn ? (
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 w-full"
+              <button onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.06] w-full"
               >
-                <LogOut size={16} /> Logout ({user?.name})
+                <LogOut size={15} /> Logout ({user?.name})
               </button>
             ) : (
               <>
-                <Link
-                  to="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800 no-underline"
-                >
-                  <LogIn size={16} /> Login
+                <Link to="/login" onClick={() => setMobileOpen(false)} className={navLink}>
+                  <LogIn size={15} /> Login
                 </Link>
-                <Link
-                  to="/register"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-crane hover:text-crane-light hover:bg-gray-800 no-underline"
+                <Link to="/register" onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-crane hover:text-crane-light hover:bg-white/[0.06] no-underline"
                 >
-                  <UserPlus size={16} /> Register
+                  <UserPlus size={15} /> Register
                 </Link>
               </>
             )}

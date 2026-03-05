@@ -25,7 +25,7 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
 
   const SortHeader = ({ field, children }: { field: string; children: React.ReactNode }) => (
     <th
-      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none"
+      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-300 select-none"
       onClick={() => setSortField(field)}
     >
       <span className="inline-flex items-center gap-1">
@@ -40,9 +40,9 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
   );
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+    <div className="overflow-x-auto glass rounded-2xl">
+      <table className="min-w-full divide-y divide-white/[0.06]">
+        <thead className="bg-white/[0.03]">
           <tr>
             <SortHeader field="ticketNumber">Ticket</SortHeader>
             <SortHeader field="subject">Subject</SortHeader>
@@ -52,24 +52,24 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
             <SortHeader field="createdAt">Created</SortHeader>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-white/[0.04]">
           {sorted.map((ticket, i) => (
             <motion.tr
               key={ticket.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
-              className="hover:bg-gray-50 transition-colors"
+              className="hover:bg-white/[0.03] transition-colors"
             >
               <td className="px-4 py-3">
                 <Link
                   to={`${linkPrefix}/${ticket.id}`}
-                  className="text-sm font-medium text-crane-dark hover:text-crane no-underline"
+                  className="text-sm font-medium text-crane hover:text-crane-light no-underline"
                 >
                   {ticket.ticketNumber}
                 </Link>
               </td>
-              <td className="px-4 py-3 text-sm text-gray-900 max-w-[300px] truncate">
+              <td className="px-4 py-3 text-sm text-gray-300 max-w-[300px] truncate">
                 {ticket.subject}
               </td>
               <td className="px-4 py-3">
@@ -89,7 +89,7 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
         </tbody>
       </table>
       {sorted.length === 0 && (
-        <div className="text-center py-12 text-gray-400 text-sm">No tickets found</div>
+        <div className="text-center py-12 text-gray-500 text-sm">No tickets found</div>
       )}
     </div>
   );

@@ -50,8 +50,10 @@ export default function StatusPieChart({ tickets }: { tickets: Ticket[] }) {
         <Tooltip
           contentStyle={{
             borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+            background: '#1a1a1f',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.3)',
+            color: '#e5e7eb',
           }}
         />
         <Legend />

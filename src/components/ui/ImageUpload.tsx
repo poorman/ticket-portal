@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import { ImagePlus, X } from 'lucide-react';
+import { useRef, useState, useCallback, useEffect } from 'react';
+import { X, Clipboard, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface ImageUploadProps {
@@ -8,35 +8,65 @@ interface ImageUploadProps {
   maxImages?: number;
 }
 
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_SIZE = 5 * 1024 * 1024;
 
 export default function ImageUpload({ images, onChange, maxImages = 5 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
 
-  const handleFiles = (files: FileList) => {
+  const processFile = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error(`${file.name} is not an image`);
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      toast.error(`${file.name} exceeds 5MB limit`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      onChange([...images, reader.result as string]);
+    };
+    reader.readAsDataURL(file);
+  }, [images, onChange]);
+
+  const handleFiles = useCallback((files: FileList | File[]) => {
     const remaining = maxImages - images.length;
     if (remaining <= 0) {
       toast.error(`Maximum ${maxImages} images allowed`);
       return;
     }
+    Array.from(files).slice(0, remaining).forEach(processFile);
+  }, [maxImages, images.length, processFile]);
 
-    const toProcess = Array.from(files).slice(0, remaining);
-    toProcess.forEach((file) => {
-      if (!file.type.startsWith('image/')) {
-        toast.error(`${file.name} is not an image`);
-        return;
+  // Clipboard paste handler
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
       }
-      if (file.size > MAX_SIZE) {
-        toast.error(`${file.name} exceeds 5MB limit`);
-        return;
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        handleFiles(imageFiles);
+        toast.success(`Pasted ${imageFiles.length} image${imageFiles.length > 1 ? 's' : ''}`);
       }
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [handleFiles]);
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        onChange([...images, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    if (e.dataTransfer.files.length) {
+      handleFiles(e.dataTransfer.files);
+    }
   };
 
   const removeImage = (index: number) => {
@@ -53,15 +83,16 @@ export default function ImageUpload({ images, onChange, maxImages = 5 }: ImageUp
         className="hidden"
         onChange={(e) => e.target.files && handleFiles(e.target.files)}
       />
+
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
           {images.map((src, i) => (
-            <div key={i} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+            <div key={i} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-white/10">
               <img src={src} alt="" className="w-full h-full object-cover" />
               <button
                 type="button"
                 onClick={() => removeImage(i)}
-                className="absolute top-1 right-1 p-0.5 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-1 right-1 p-0.5 rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X size={12} />
               </button>
@@ -69,15 +100,27 @@ export default function ImageUpload({ images, onChange, maxImages = 5 }: ImageUp
           ))}
         </div>
       )}
+
       {images.length < maxImages && (
-        <button
-          type="button"
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          className={`drop-zone cursor-pointer ${dragging ? 'active' : ''}`}
           onClick={() => inputRef.current?.click()}
-          className="btn btn-secondary btn-sm"
         >
-          <ImagePlus size={14} />
-          Add Images ({images.length}/{maxImages})
-        </button>
+          <div className="flex flex-col items-center gap-2 text-gray-500">
+            <div className="flex items-center gap-3">
+              <Upload size={16} />
+              <span className="text-sm">Drop images here, click to browse</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+              <Clipboard size={12} />
+              <span>or paste from clipboard (Ctrl+V)</span>
+            </div>
+            <span className="text-[11px] text-gray-600">{images.length}/{maxImages} images</span>
+          </div>
+        </div>
       )}
     </div>
   );

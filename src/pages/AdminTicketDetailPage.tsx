@@ -66,7 +66,7 @@ export default function AdminTicketDetailPage() {
       <AnimatedPage>
         <div className="max-w-3xl mx-auto px-4 py-8 text-center">
           <p className="text-gray-500">Ticket not found.</p>
-          <Link to="/admin" className="text-sm text-crane-dark hover:text-crane mt-2 inline-block">
+          <Link to="/admin" className="text-sm text-crane hover:text-crane-light mt-2 inline-block">
             Back to admin
           </Link>
         </div>
@@ -77,7 +77,7 @@ export default function AdminTicketDetailPage() {
   return (
     <AnimatedPage>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <Link to="/admin" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6 no-underline">
+        <Link to="/admin" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300 mb-6 no-underline">
           <ArrowLeft size={14} />
           Back to admin
         </Link>
@@ -143,7 +143,7 @@ export default function AdminTicketDetailPage() {
                   </button>
                 )}
 
-                <div className="border-t border-gray-200 pt-4">
+                <div className="border-t border-white/[0.06] pt-4">
                   <button
                     onClick={() => setShowDelete(true)}
                     className="btn btn-danger w-full"

@@ -163,12 +163,12 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
       </div>
 
       {isLoggedIn && (
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
           <input
             type="checkbox"
             checked={linkToAccount}
             onChange={(e) => setLinkToAccount(e.target.checked)}
-            className="rounded border-gray-300 text-crane focus:ring-crane"
+            className="rounded border-white/20 bg-white/[0.06] text-crane focus:ring-crane"
           />
           Link this ticket to my account ({user?.email})
         </label>

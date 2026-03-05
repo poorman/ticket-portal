@@ -42,7 +42,7 @@ export default function RegisterPage() {
       <div className="min-h-[80vh] flex items-center justify-center px-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Create account</h1>
+            <h1 className="text-2xl font-bold text-white">Create account</h1>
             <p className="text-gray-500 mt-1">Get started with Crane Network Support</p>
           </div>
 
@@ -102,14 +102,14 @@ export default function RegisterPage() {
 
             <div className="mt-6 text-center text-sm text-gray-500">
               Already have an account?{' '}
-              <Link to="/login" className="text-crane-dark hover:text-crane font-medium">
+              <Link to="/login" className="text-crane hover:text-crane-light font-medium">
                 Sign in
               </Link>
             </div>
           </div>
 
           <div className="text-center mt-4">
-            <Link to="/" className="text-sm text-gray-400 hover:text-gray-600">
+            <Link to="/" className="text-sm text-gray-500 hover:text-gray-300">
               &larr; Back to home
             </Link>
           </div>
