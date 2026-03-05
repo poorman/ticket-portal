@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Ticket, TicketResponse, CreateTicketInput, CreateResponseInput } from '../types';
 
+export interface SearchResult {
+  ticket: Ticket;
+  matchedIn: ('subject' | 'description' | 'response' | 'ticketNumber')[];
+  responseSnippet?: string;
+  relevanceScore: number;
+}
+
 interface TicketState {
   tickets: Ticket[];
   responses: TicketResponse[];
@@ -16,6 +23,7 @@ interface TicketState {
   updateTicket: (id: number, updates: Partial<Pick<Ticket, 'status' | 'priority'>>) => Ticket | undefined;
   deleteTicket: (id: number) => void;
   searchTickets: (query: string) => Ticket[];
+  deepSearch: (query: string) => SearchResult[];
 
   addResponse: (data: CreateResponseInput) => TicketResponse;
   getResponsesForTicket: (ticketId: number, includeInternal: boolean) => TicketResponse[];
@@ -101,6 +109,69 @@ export const useTicketStore = create<TicketState>()(
             t.description.toLowerCase().includes(q) ||
             t.submitterEmail.toLowerCase().includes(q)
         );
+      },
+
+      deepSearch: (query) => {
+        const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+        if (!terms.length) return [];
+
+        const { tickets, responses } = get();
+        const results: SearchResult[] = [];
+
+        for (const ticket of tickets) {
+          const matchedIn: SearchResult['matchedIn'] = [];
+          let score = 0;
+
+          const subjectLower = ticket.subject.toLowerCase();
+          const descLower = ticket.description.toLowerCase();
+          const numLower = ticket.ticketNumber.toLowerCase();
+
+          for (const term of terms) {
+            if (numLower.includes(term)) {
+              if (!matchedIn.includes('ticketNumber')) matchedIn.push('ticketNumber');
+              score += 10;
+            }
+            if (subjectLower.includes(term)) {
+              if (!matchedIn.includes('subject')) matchedIn.push('subject');
+              score += 5;
+            }
+            if (descLower.includes(term)) {
+              if (!matchedIn.includes('description')) matchedIn.push('description');
+              score += 3;
+            }
+          }
+
+          // Search responses for this ticket
+          const ticketResponses = responses.filter((r) => r.ticketId === ticket.id && !r.isInternal);
+          let responseSnippet: string | undefined;
+          for (const resp of ticketResponses) {
+            const msgLower = resp.message.toLowerCase();
+            for (const term of terms) {
+              if (msgLower.includes(term)) {
+                if (!matchedIn.includes('response')) matchedIn.push('response');
+                score += 2;
+                if (!responseSnippet) {
+                  const idx = msgLower.indexOf(term);
+                  const start = Math.max(0, idx - 60);
+                  const end = Math.min(resp.message.length, idx + term.length + 60);
+                  responseSnippet = (start > 0 ? '...' : '') + resp.message.slice(start, end) + (end < resp.message.length ? '...' : '');
+                }
+                break;
+              }
+            }
+          }
+
+          // Boost resolved/closed tickets (they likely have solutions)
+          if (ticket.status === 'resolved' || ticket.status === 'closed') {
+            score += 3;
+          }
+
+          if (matchedIn.length > 0) {
+            results.push({ ticket, matchedIn, responseSnippet, relevanceScore: score });
+          }
+        }
+
+        return results.sort((a, b) => b.relevanceScore - a.relevanceScore);
       },
 
       addResponse: (data) => {

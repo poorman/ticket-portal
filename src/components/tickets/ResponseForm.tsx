@@ -68,12 +68,12 @@ export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: Re
       <ImageUpload images={images} onChange={setImages} />
 
       {isAdmin && (
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
           <input
             type="checkbox"
             checked={isInternal}
             onChange={(e) => setIsInternal(e.target.checked)}
-            className="rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+            className="rounded border-white/20 bg-white/[0.06] text-amber-500 focus:ring-amber-500"
           />
           <Lock size={14} className="text-amber-500" />
           Internal note (not visible to customer)

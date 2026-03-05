@@ -23,27 +23,27 @@ export default function TicketDetails({ ticket, showInternalNotes = false }: Tic
       {/* Header */}
       <div className="card">
         <div className="flex flex-wrap items-center gap-3 mb-4">
-          <h1 className="text-xl font-bold text-gray-900">{ticket.ticketNumber}</h1>
+          <h1 className="text-xl font-bold text-white">{ticket.ticketNumber}</h1>
           <StatusBadge status={ticket.status} />
           <PriorityBadge priority={ticket.priority} />
           <TypeBadge type={ticket.type} />
         </div>
-        <h2 className="text-lg font-medium text-gray-900 mb-4">{ticket.subject}</h2>
+        <h2 className="text-lg font-medium text-white mb-4">{ticket.subject}</h2>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <div className="flex items-center gap-2 text-gray-500">
+          <div className="flex items-center gap-2 text-gray-400">
             <Tag size={14} />
             <span>{ticket.type.replace('_', ' ')}</span>
           </div>
-          <div className="flex items-center gap-2 text-gray-500">
+          <div className="flex items-center gap-2 text-gray-400">
             <AlertCircle size={14} />
             <span>{ticket.priority}</span>
           </div>
-          <div className="flex items-center gap-2 text-gray-500">
+          <div className="flex items-center gap-2 text-gray-400">
             <Calendar size={14} />
             <span>{formatDate(ticket.createdAt)}</span>
           </div>
-          <div className="flex items-center gap-2 text-gray-500">
+          <div className="flex items-center gap-2 text-gray-400">
             <Clock size={14} />
             <span>{formatDate(ticket.updatedAt)}</span>
           </div>
@@ -53,9 +53,9 @@ export default function TicketDetails({ ticket, showInternalNotes = false }: Tic
       {/* Description */}
       <div className="card">
         <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Description</h3>
-        <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
+        <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
         {ticket.images.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="mt-4 pt-4 border-t border-white/[0.06]">
             <h4 className="text-sm font-medium text-gray-500 mb-2">Attachments</h4>
             <ImageGallery images={ticket.images} />
           </div>
@@ -66,17 +66,17 @@ export default function TicketDetails({ ticket, showInternalNotes = false }: Tic
       <div className="card">
         <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Contact Information</h3>
         <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-gray-700">
-            <User size={14} className="text-gray-400" />
+          <div className="flex items-center gap-2 text-gray-300">
+            <User size={14} className="text-gray-500" />
             {ticket.submitterName}
           </div>
-          <div className="flex items-center gap-2 text-gray-700">
-            <Mail size={14} className="text-gray-400" />
+          <div className="flex items-center gap-2 text-gray-300">
+            <Mail size={14} className="text-gray-500" />
             {ticket.submitterEmail}
           </div>
           {ticket.submitterPhone && (
-            <div className="flex items-center gap-2 text-gray-700">
-              <Phone size={14} className="text-gray-400" />
+            <div className="flex items-center gap-2 text-gray-300">
+              <Phone size={14} className="text-gray-500" />
               {ticket.submitterPhone}
             </div>
           )}

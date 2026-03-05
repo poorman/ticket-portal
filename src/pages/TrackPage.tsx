@@ -44,13 +44,13 @@ export default function TrackPage() {
   return (
     <AnimatedPage>
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <Link to="/" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6 no-underline">
+        <Link to="/" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300 mb-6 no-underline">
           <ArrowLeft size={14} />
           Back to home
         </Link>
 
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Track Your Ticket</h1>
+          <h1 className="text-2xl font-bold text-white">Track Your Ticket</h1>
           <p className="text-gray-500 mt-1">Enter your ticket number and email to check the status.</p>
         </div>
 
@@ -95,8 +95,8 @@ export default function TrackPage() {
 
         {searched && !ticket && (
           <div className="card text-center py-12">
-            <p className="text-gray-500">No ticket found matching your search.</p>
-            <p className="text-sm text-gray-400 mt-2">
+            <p className="text-gray-400">No ticket found matching your search.</p>
+            <p className="text-sm text-gray-500 mt-2">
               Make sure the ticket number and email are correct.
             </p>
           </div>

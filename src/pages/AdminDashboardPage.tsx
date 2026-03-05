@@ -48,8 +48,8 @@ export default function AdminDashboardPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-              <span className="badge bg-crane/20 text-crane-dark">Admin</span>
+              <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+              <span className="badge bg-crane/20 text-crane">Admin</span>
             </div>
             <p className="text-gray-500 mt-1">{stats.total} total tickets</p>
           </div>
@@ -65,9 +65,9 @@ export default function AdminDashboardPage() {
 
         {/* Priority Alert */}
         {stats.highPriority > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-8 flex items-center gap-3">
-            <AlertTriangle size={20} className="text-red-500 shrink-0" />
-            <p className="text-sm text-red-700">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-8 flex items-center gap-3">
+            <AlertTriangle size={20} className="text-red-400 shrink-0" />
+            <p className="text-sm text-red-300">
               <strong>{stats.highPriority}</strong> high-priority ticket{stats.highPriority > 1 ? 's' : ''} need{stats.highPriority === 1 ? 's' : ''} attention
             </p>
           </div>
@@ -88,7 +88,7 @@ export default function AdminDashboardPage() {
         {/* Ticket Table */}
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">All Tickets</h2>
+            <h2 className="text-lg font-semibold text-white">All Tickets</h2>
             <div className="w-full sm:w-72">
               <SearchInput
                 value={searchQuery}

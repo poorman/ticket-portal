@@ -32,11 +32,11 @@ export default function TicketCard({ ticket, linkPrefix = '/tickets', showSubmit
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-sm font-medium text-crane-dark">{ticket.ticketNumber}</span>
+              <span className="text-sm font-medium text-crane">{ticket.ticketNumber}</span>
               <StatusBadge status={ticket.status} />
               <PriorityBadge priority={ticket.priority} />
             </div>
-            <h3 className="text-sm font-medium text-gray-900 truncate">{ticket.subject}</h3>
+            <h3 className="text-sm font-medium text-white truncate">{ticket.subject}</h3>
             {showSubmitter && (
               <p className="text-xs text-gray-500 mt-1">
                 {ticket.submitterName} &middot; {ticket.submitterEmail}
@@ -44,9 +44,9 @@ export default function TicketCard({ ticket, linkPrefix = '/tickets', showSubmit
             )}
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
-            <span className="text-xs text-gray-400">{formatDateShort(ticket.createdAt)}</span>
+            <span className="text-xs text-gray-500">{formatDateShort(ticket.createdAt)}</span>
             {responseCount > 0 && (
-              <span className="flex items-center gap-1 text-xs text-gray-400">
+              <span className="flex items-center gap-1 text-xs text-gray-500">
                 <MessageSquare size={12} />
                 {responseCount}
               </span>

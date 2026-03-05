@@ -10,6 +10,11 @@ export default {
           light: '#e8c49f',
           lighter: '#f5e6d3',
         },
+        surface: {
+          DEFAULT: '#141416',
+          raised: '#1a1a1f',
+          overlay: '#1e1e24',
+        },
         status: {
           open: '#ef4444',
           'in-progress': '#f59e0b',
@@ -20,6 +25,9 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      backdropBlur: {
+        '3xl': '64px',
       },
     },
   },

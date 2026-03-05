@@ -14,7 +14,7 @@ export default function ImageGallery({ images }: { images: string[] }) {
           <button
             key={i}
             onClick={() => setSelected(src)}
-            className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200 hover:border-crane transition-colors cursor-pointer"
+            className="w-24 h-24 rounded-lg overflow-hidden border border-white/10 hover:border-crane transition-colors cursor-pointer"
           >
             <img src={src} alt="" className="w-full h-full object-cover" />
           </button>
