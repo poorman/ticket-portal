@@ -1,11 +1,15 @@
-import { useState } from 'react';
-import { Send } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Send, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import toast from 'react-hot-toast';
 import { useTicketStore } from '../../store/ticketStore';
+import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
 import ImageUpload from '../ui/ImageUpload';
 import type { TicketType, TicketPriority } from '../../types';
+
+const DEFAULT_ASSIGNED = ['oggie', 'tayyab'];
+const DEFAULT_CC = ['kristina', 'robin', 'pbieda'];
 
 interface TicketFormProps {
   onSuccess?: (ticketNumber: string) => void;
@@ -14,9 +18,17 @@ interface TicketFormProps {
 export default function TicketForm({ onSuccess }: TicketFormProps) {
   const { user, isLoggedIn } = useAuth();
   const createTicket = useTicketStore((s) => s.createTicket);
+  const allUsers = useAuthStore((s) => s.users);
   const [loading, setLoading] = useState(false);
   const [linkToAccount, setLinkToAccount] = useState(true);
   const [images, setImages] = useState<string[]>([]);
+  const [assignedTo, setAssignedTo] = useState<string[]>(DEFAULT_ASSIGNED);
+  const [ccEmails, setCcEmails] = useState<string[]>(DEFAULT_CC);
+
+  const availableUsers = useMemo(
+    () => allUsers.filter((u) => !u.suspended).map((u) => ({ username: u.username, name: u.name, email: u.email })),
+    [allUsers]
+  );
   const [form, setForm] = useState({
     type: 'general' as TicketType,
     subject: '',
@@ -40,9 +52,14 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
 
     setLoading(true);
     try {
+      const submitData = isLoggedIn
+        ? { ...form, submitterName: user!.name, submitterEmail: user!.email, submitterPhone: user!.phone || form.submitterPhone }
+        : form;
       const ticket = createTicket({
-        ...form,
+        ...submitData,
         userId: isLoggedIn && linkToAccount ? user!.id : undefined,
+        assignedTo,
+        ccEmails,
         images,
       });
 
@@ -120,41 +137,119 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="label">Your Name</label>
-          <input
-            type="text"
-            value={form.submitterName}
-            onChange={(e) => update('submitterName', e.target.value)}
-            placeholder="John Doe"
-            className="input"
-            required
-            minLength={2}
-          />
+      {!isLoggedIn && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Your Name</label>
+              <input
+                type="text"
+                value={form.submitterName}
+                onChange={(e) => update('submitterName', e.target.value)}
+                placeholder="John Doe"
+                className="input"
+                required
+                minLength={2}
+              />
+            </div>
+            <div>
+              <label className="label">Your Email</label>
+              <input
+                type="email"
+                value={form.submitterEmail}
+                onChange={(e) => update('submitterEmail', e.target.value)}
+                placeholder="john@example.com"
+                className="input"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Phone (optional)</label>
+            <input
+              type="tel"
+              value={form.submitterPhone}
+              onChange={(e) => update('submitterPhone', e.target.value)}
+              placeholder="+1 (555) 000-0000"
+              className="input"
+            />
+          </div>
+        </>
+      )}
+
+      {/* Assigned To */}
+      <div>
+        <label className="label">Assigned To</label>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {assignedTo.map((username) => {
+            const u = availableUsers.find((au) => au.username === username);
+            return (
+              <span key={username} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-crane/20 text-crane">
+                @{username}{u ? ` (${u.name})` : ''}
+                <button type="button" onClick={() => setAssignedTo((prev) => prev.filter((a) => a !== username))} className="hover:text-white">
+                  <X size={12} />
+                </button>
+              </span>
+            );
+          })}
         </div>
-        <div>
-          <label className="label">Your Email</label>
-          <input
-            type="email"
-            value={form.submitterEmail}
-            onChange={(e) => update('submitterEmail', e.target.value)}
-            placeholder="john@example.com"
-            className="input"
-            required
-          />
-        </div>
+        <select
+          className="select"
+          value=""
+          onChange={(e) => {
+            if (e.target.value && !assignedTo.includes(e.target.value)) {
+              setAssignedTo((prev) => [...prev, e.target.value]);
+            }
+            e.target.value = '';
+          }}
+        >
+          <option value="">Add person...</option>
+          {availableUsers
+            .filter((u) => !assignedTo.includes(u.username))
+            .map((u) => (
+              <option key={u.username} value={u.username}>
+                @{u.username} — {u.name}
+              </option>
+            ))}
+        </select>
       </div>
 
+      {/* CC */}
       <div>
-        <label className="label">Phone (optional)</label>
-        <input
-          type="tel"
-          value={form.submitterPhone}
-          onChange={(e) => update('submitterPhone', e.target.value)}
-          placeholder="+1 (555) 000-0000"
-          className="input"
-        />
+        <label className="label">CC</label>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {ccEmails.map((username) => {
+            const u = availableUsers.find((au) => au.username === username);
+            return (
+              <span key={username} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-white/[0.06] text-gray-300">
+                @{username}{u ? ` (${u.name})` : ''}
+                <button type="button" onClick={() => setCcEmails((prev) => prev.filter((c) => c !== username))} className="hover:text-white">
+                  <X size={12} />
+                </button>
+              </span>
+            );
+          })}
+        </div>
+        <select
+          className="select"
+          value=""
+          onChange={(e) => {
+            if (e.target.value && !ccEmails.includes(e.target.value)) {
+              setCcEmails((prev) => [...prev, e.target.value]);
+            }
+            e.target.value = '';
+          }}
+        >
+          <option value="">Add person...</option>
+          {availableUsers
+            .filter((u) => !ccEmails.includes(u.username))
+            .map((u) => (
+              <option key={u.username} value={u.username}>
+                @{u.username} — {u.name}
+              </option>
+            ))}
+        </select>
       </div>
 
       <div>

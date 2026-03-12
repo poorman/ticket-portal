@@ -11,7 +11,7 @@ interface EmptyStateProps {
 export default function EmptyState({ icon: Icon = Inbox, title, description, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="p-4 rounded-full bg-white/[0.06] mb-4">
+      <div className="p-4 rounded bg-white/[0.06] mb-4">
         <Icon size={32} className="text-gray-500" />
       </div>
       <h3 className="text-lg font-medium text-white mb-1">{title}</h3>

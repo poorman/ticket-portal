@@ -5,11 +5,15 @@ export type TicketPriority = 'low' | 'medium' | 'high';
 
 export interface User {
   id: number;
+  username: string;
   email: string;
   password: string;
   name: string;
+  phone?: string;
   role: UserRole;
+  suspended?: boolean;
   createdAt: string;
+  lastLoginAt?: string;
 }
 
 export interface Ticket {
@@ -22,6 +26,8 @@ export interface Ticket {
   submitterEmail: string;
   submitterPhone?: string;
   userId?: number;
+  assignedTo: string[];
+  ccEmails: string[];
   status: TicketStatus;
   priority: TicketPriority;
   images: string[];
@@ -50,6 +56,8 @@ export interface CreateTicketInput {
   submitterEmail: string;
   submitterPhone?: string;
   userId?: number;
+  assignedTo?: string[];
+  ccEmails?: string[];
   priority?: TicketPriority;
   images?: string[];
 }

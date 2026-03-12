@@ -30,13 +30,13 @@ export default function ResponseTimeline({ responses }: { responses: TicketRespo
           </div>
 
           <div
-            className={`rounded-xl p-4 ${
+            className={`rounded p-4 ${
               resp.isInternal
                 ? 'bg-amber-500/[0.08] border border-amber-500/20'
                 : 'bg-white/[0.03] border border-white/[0.06]'
             }`}
           >
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2">
               <span className="text-sm font-medium text-white">
                 {resp.userName || 'Anonymous'}
               </span>
@@ -54,7 +54,7 @@ export default function ResponseTimeline({ responses }: { responses: TicketRespo
                   <Lock size={10} className="mr-1" /> Internal
                 </span>
               )}
-              <span className="text-xs text-gray-500 ml-auto">
+              <span className="text-xs text-gray-500 ml-auto shrink-0">
                 {formatDate(resp.createdAt)}
               </span>
             </div>

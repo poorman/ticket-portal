@@ -4,6 +4,8 @@ import { Plus, Search, Ticket, Clock, CheckCircle, AlertCircle } from 'lucide-re
 import AnimatedPage from '../components/layout/AnimatedPage';
 import StatCard from '../components/ui/StatCard';
 import TicketList from '../components/tickets/TicketList';
+import StatusPieChart from '../components/charts/StatusPieChart';
+import TicketsOverTimeChart from '../components/charts/TicketsOverTimeChart';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useTicketStore } from '../store/ticketStore';
 
@@ -54,6 +56,20 @@ export default function DashboardPage() {
           <StatCard label="In Progress" value={stats.inProgress} icon={Clock} color="text-amber-500" />
           <StatCard label="Resolved" value={stats.resolved} icon={CheckCircle} color="text-emerald-500" />
         </div>
+
+        {/* Charts */}
+        {tickets.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="card">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Status Distribution</h3>
+              <StatusPieChart tickets={tickets} />
+            </div>
+            <div className="card">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Tickets Over Time</h3>
+              <TicketsOverTimeChart tickets={tickets} />
+            </div>
+          </div>
+        )}
 
         {/* Recent Tickets */}
         <div className="mb-8">

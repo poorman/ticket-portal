@@ -83,65 +83,57 @@ export default function AdminTicketDetailPage() {
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main content */}
-          <div className="lg:col-span-2 space-y-6">
-            <TicketDetails ticket={ticket} showInternalNotes />
-
-            <div className="card">
-              <ResponseForm
-                ticketId={ticket.id}
-                onSuccess={refreshTicket}
-              />
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-4">
+          {/* Sidebar — shows first on mobile so admin controls are accessible without scrolling */}
+          <div className="order-first lg:order-last space-y-4">
             <div className="card">
               <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">
                 Admin Controls
               </h3>
 
               <div className="space-y-4">
-                <div>
-                  <label className="label">Status</label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as TicketStatus)}
-                    className="select"
-                  >
-                    <option value="open">Open</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="waiting_response">Waiting Response</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="closed">Closed</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+                  <div>
+                    <label className="label">Status</label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value as TicketStatus)}
+                      className="select"
+                    >
+                      <option value="open">Open</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="waiting_response">Waiting Response</option>
+                      <option value="resolved">Resolved</option>
+                      <option value="closed">Closed</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="label">Priority</label>
+                    <select
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value as TicketPriority)}
+                      className="select"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="label">Priority</label>
-                  <select
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value as TicketPriority)}
-                    className="select"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
-
-                <button onClick={handleUpdate} className="btn btn-primary w-full">
-                  <Save size={16} />
-                  Update Ticket
-                </button>
-
-                {ticket.status !== 'closed' && (
-                  <button onClick={handleClose} className="btn btn-secondary w-full">
-                    <XCircle size={16} />
-                    Close Ticket
+                <div className="flex gap-3 lg:flex-col">
+                  <button onClick={handleUpdate} className="btn btn-primary flex-1 lg:w-full">
+                    <Save size={16} />
+                    Update Ticket
                   </button>
-                )}
+
+                  {ticket.status !== 'closed' && (
+                    <button onClick={handleClose} className="btn btn-secondary flex-1 lg:w-full">
+                      <XCircle size={16} />
+                      Close Ticket
+                    </button>
+                  )}
+                </div>
 
                 <div className="border-t border-white/[0.06] pt-4">
                   <button
@@ -153,6 +145,18 @@ export default function AdminTicketDetailPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Main content */}
+          <div className="lg:col-span-2 space-y-6">
+            <TicketDetails ticket={ticket} showInternalNotes />
+
+            <div className="card">
+              <ResponseForm
+                ticketId={ticket.id}
+                onSuccess={refreshTicket}
+              />
             </div>
           </div>
         </div>

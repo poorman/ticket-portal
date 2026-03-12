@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Clock,
   CheckCircle,
   AlertCircle,
   AlertTriangle,
   TrendingUp,
+  Users,
 } from 'lucide-react';
 import AnimatedPage from '../components/layout/AnimatedPage';
 import StatCard from '../components/ui/StatCard';
@@ -53,6 +55,10 @@ export default function AdminDashboardPage() {
             </div>
             <p className="text-gray-500 mt-1">{stats.total} total tickets</p>
           </div>
+          <Link to="/admin/users" className="btn btn-secondary no-underline">
+            <Users size={16} />
+            Manage Users
+          </Link>
         </div>
 
         {/* Stats */}
@@ -65,7 +71,7 @@ export default function AdminDashboardPage() {
 
         {/* Priority Alert */}
         {stats.highPriority > 0 && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-8 flex items-center gap-3">
+          <div className="bg-red-500/10 border border-red-500/20 rounded p-4 mb-8 flex items-center gap-3">
             <AlertTriangle size={20} className="text-red-400 shrink-0" />
             <p className="text-sm text-red-300">
               <strong>{stats.highPriority}</strong> high-priority ticket{stats.highPriority > 1 ? 's' : ''} need{stats.highPriority === 1 ? 's' : ''} attention

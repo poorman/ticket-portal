@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { X, Clipboard, Upload } from 'lucide-react';
+import { X, Clipboard, Upload, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { compressImage } from '../../lib/image-utils';
 
 interface ImageUploadProps {
   images: string[];
@@ -8,26 +9,32 @@ interface ImageUploadProps {
   maxImages?: number;
 }
 
-const MAX_SIZE = 5 * 1024 * 1024;
+const MAX_SIZE = 10 * 1024 * 1024; // 10MB raw (compression will shrink it)
 
 export default function ImageUpload({ images, onChange, maxImages = 5 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [compressing, setCompressing] = useState(0);
 
-  const processFile = useCallback((file: File) => {
+  const processFile = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
       toast.error(`${file.name} is not an image`);
       return;
     }
     if (file.size > MAX_SIZE) {
-      toast.error(`${file.name} exceeds 5MB limit`);
+      toast.error(`${file.name} exceeds 10MB limit`);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      onChange([...images, reader.result as string]);
-    };
-    reader.readAsDataURL(file);
+
+    setCompressing((c) => c + 1);
+    try {
+      const compressed = await compressImage(file);
+      if (compressed) {
+        onChange([...images, compressed]);
+      }
+    } finally {
+      setCompressing((c) => c - 1);
+    }
   }, [images, onChange]);
 
   const handleFiles = useCallback((files: FileList | File[]) => {
@@ -87,7 +94,7 @@ export default function ImageUpload({ images, onChange, maxImages = 5 }: ImageUp
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
           {images.map((src, i) => (
-            <div key={i} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-white/10">
+            <div key={i} className="relative group w-16 h-16 sm:w-20 sm:h-20 rounded overflow-hidden border border-white/10">
               <img src={src} alt="" className="w-full h-full object-cover" />
               <button
                 type="button"
@@ -98,6 +105,11 @@ export default function ImageUpload({ images, onChange, maxImages = 5 }: ImageUp
               </button>
             </div>
           ))}
+          {compressing > 0 && (
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded border border-white/10 flex items-center justify-center">
+              <Loader2 size={16} className="text-gray-500 animate-spin" />
+            </div>
+          )}
         </div>
       )}
 
@@ -118,7 +130,10 @@ export default function ImageUpload({ images, onChange, maxImages = 5 }: ImageUp
               <Clipboard size={12} />
               <span>or paste from clipboard (Ctrl+V)</span>
             </div>
-            <span className="text-[11px] text-gray-600">{images.length}/{maxImages} images</span>
+            <span className="text-[11px] text-gray-600">
+              {images.length}/{maxImages} images
+              {compressing > 0 && ` (compressing ${compressing}...)`}
+            </span>
           </div>
         </div>
       )}

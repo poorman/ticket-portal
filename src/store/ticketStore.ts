@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Ticket, TicketResponse, CreateTicketInput, CreateResponseInput } from '../types';
+import { useNotificationStore } from './notificationStore';
 
 export interface SearchResult {
   ticket: Ticket;
@@ -50,6 +51,8 @@ export const useTicketStore = create<TicketState>()(
           submitterEmail: data.submitterEmail,
           submitterPhone: data.submitterPhone,
           userId: data.userId,
+          assignedTo: data.assignedTo || [],
+          ccEmails: data.ccEmails || [],
           status: 'open',
           priority: data.priority || 'medium',
           images: data.images || [],
@@ -61,6 +64,12 @@ export const useTicketStore = create<TicketState>()(
           nextTicketId: state.nextTicketId + 1,
           nextTicketNumber: state.nextTicketNumber + 1,
         }));
+        useNotificationStore.getState().addNotification({
+          message: `New ticket created: ${data.subject}`,
+          ticketNumber: ticket.ticketNumber,
+          ticketId: ticket.id,
+          type: 'ticket_created',
+        });
         return ticket;
       },
 
@@ -90,6 +99,17 @@ export const useTicketStore = create<TicketState>()(
             return updated;
           }),
         }));
+        if (updated) {
+          const isClosed = updates.status === 'closed' || updates.status === 'resolved';
+          useNotificationStore.getState().addNotification({
+            message: isClosed
+              ? `Ticket ${isClosed ? updates.status : 'updated'}`
+              : `Ticket updated${updates.status ? ` to ${updates.status.replace('_', ' ')}` : ''}${updates.priority ? `, priority: ${updates.priority}` : ''}`,
+            ticketNumber: updated.ticketNumber,
+            ticketId: updated.id,
+            type: isClosed ? 'ticket_closed' : 'ticket_updated',
+          });
+        }
         return updated;
       },
 
@@ -193,6 +213,15 @@ export const useTicketStore = create<TicketState>()(
             t.id === data.ticketId ? { ...t, updatedAt: new Date().toISOString() } : t
           ),
         }));
+        if (!data.isInternal) {
+          const ticket = get().tickets.find((t) => t.id === data.ticketId);
+          useNotificationStore.getState().addNotification({
+            message: `New response from ${data.userName || 'Anonymous'}`,
+            ticketNumber: ticket?.ticketNumber,
+            ticketId: data.ticketId,
+            type: 'response_added',
+          });
+        }
         return response;
       },
 

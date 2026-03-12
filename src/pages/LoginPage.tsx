@@ -8,7 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login, isLoggedIn, isAdmin } = useAuth();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -20,14 +20,14 @@ export default function LoginPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const user = login(email, password);
+    const user = login(identifier, password);
     setLoading(false);
 
     if (user) {
       toast.success(`Welcome back, ${user.name}!`);
       navigate(user.role === 'admin' ? '/admin' : '/dashboard');
     } else {
-      toast.error('Invalid email or password');
+      toast.error('Invalid username/email or password');
     }
   };
 
@@ -43,12 +43,12 @@ export default function LoginPage() {
           <div className="card">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="label">Email</label>
+                <label className="label">Username or Email</label>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="username or you@example.com"
                   className="input"
                   required
                 />

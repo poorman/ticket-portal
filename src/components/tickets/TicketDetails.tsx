@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Calendar, Clock, Tag, AlertCircle, User, Mail, Phone } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import PriorityBadge from '../ui/PriorityBadge';
@@ -14,38 +15,54 @@ interface TicketDetailsProps {
 }
 
 export default function TicketDetails({ ticket, showInternalNotes = false }: TicketDetailsProps) {
-  const responses = useTicketStore((s) =>
-    s.getResponsesForTicket(ticket.id, showInternalNotes)
+  const allResponses = useTicketStore((s) => s.responses);
+  const responses = useMemo(
+    () => allResponses.filter((r) => r.ticketId === ticket.id && (showInternalNotes || !r.isInternal)),
+    [allResponses, ticket.id, showInternalNotes]
   );
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="card">
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <h1 className="text-xl font-bold text-white">{ticket.ticketNumber}</h1>
-          <StatusBadge status={ticket.status} />
-          <PriorityBadge priority={ticket.priority} />
-          <TypeBadge type={ticket.type} />
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
+              <h1 className="text-xl font-bold text-white">{ticket.ticketNumber}</h1>
+              <StatusBadge status={ticket.status} />
+              <PriorityBadge priority={ticket.priority} />
+              <TypeBadge type={ticket.type} />
+            </div>
+            <h2 className="text-lg font-medium text-white">{ticket.subject}</h2>
+          </div>
+          <div className="hidden sm:flex flex-col items-end gap-1.5 shrink-0 text-xs text-gray-500">
+            <div className="flex items-center gap-1.5">
+              <Tag size={12} />
+              <span>{ticket.type.replace('_', ' ')}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <AlertCircle size={12} />
+              <span>{ticket.priority}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Calendar size={12} />
+              <span>{formatDate(ticket.createdAt)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock size={12} />
+              <span>{formatDate(ticket.updatedAt)}</span>
+            </div>
+          </div>
         </div>
-        <h2 className="text-lg font-medium text-white mb-4">{ticket.subject}</h2>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <div className="flex items-center gap-2 text-gray-400">
-            <Tag size={14} />
-            <span>{ticket.type.replace('_', ' ')}</span>
+        {/* Mobile metadata */}
+        <div className="sm:hidden grid grid-cols-2 gap-2 mt-3 text-xs text-gray-500">
+          <div className="flex items-center gap-1.5">
+            <Calendar size={12} />
+            <span className="truncate">{formatDate(ticket.createdAt)}</span>
           </div>
-          <div className="flex items-center gap-2 text-gray-400">
-            <AlertCircle size={14} />
-            <span>{ticket.priority}</span>
-          </div>
-          <div className="flex items-center gap-2 text-gray-400">
-            <Calendar size={14} />
-            <span>{formatDate(ticket.createdAt)}</span>
-          </div>
-          <div className="flex items-center gap-2 text-gray-400">
-            <Clock size={14} />
-            <span>{formatDate(ticket.updatedAt)}</span>
+          <div className="flex items-center gap-1.5">
+            <Clock size={12} />
+            <span className="truncate">{formatDate(ticket.updatedAt)}</span>
           </div>
         </div>
       </div>
@@ -62,17 +79,17 @@ export default function TicketDetails({ ticket, showInternalNotes = false }: Tic
         )}
       </div>
 
-      {/* Contact Info */}
+      {/* Contact Info & Assignment */}
       <div className="card">
         <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Contact Information</h3>
         <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-gray-300">
-            <User size={14} className="text-gray-500" />
-            {ticket.submitterName}
+          <div className="flex items-center gap-2 text-gray-300 min-w-0">
+            <User size={14} className="text-gray-500 shrink-0" />
+            <span className="truncate">{ticket.submitterName}</span>
           </div>
-          <div className="flex items-center gap-2 text-gray-300">
-            <Mail size={14} className="text-gray-500" />
-            {ticket.submitterEmail}
+          <div className="flex items-center gap-2 text-gray-300 min-w-0">
+            <Mail size={14} className="text-gray-500 shrink-0" />
+            <span className="truncate">{ticket.submitterEmail}</span>
           </div>
           {ticket.submitterPhone && (
             <div className="flex items-center gap-2 text-gray-300">
@@ -81,6 +98,26 @@ export default function TicketDetails({ ticket, showInternalNotes = false }: Tic
             </div>
           )}
         </div>
+        {(ticket.assignedTo?.length > 0 || ticket.ccEmails?.length > 0) && (
+          <div className="border-t border-white/[0.06] mt-3 pt-3 space-y-2 text-sm">
+            {ticket.assignedTo?.length > 0 && (
+              <div>
+                <span className="text-gray-500 text-xs uppercase tracking-wide">Assigned to: </span>
+                <span className="text-crane">
+                  {ticket.assignedTo.map((u) => `@${u}`).join(', ')}
+                </span>
+              </div>
+            )}
+            {ticket.ccEmails?.length > 0 && (
+              <div>
+                <span className="text-gray-500 text-xs uppercase tracking-wide">CC: </span>
+                <span className="text-gray-300">
+                  {ticket.ccEmails.map((u) => `@${u}`).join(', ')}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Responses */}
