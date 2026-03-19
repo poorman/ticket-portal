@@ -89,9 +89,8 @@ export const useTicketStore = create<TicketState>()(
         set((state) => ({
           tickets: state.tickets.map((t) => {
             if (t.id !== id) return t;
-            const closedStatuses = ['closed', 'resolved'];
             const closedAt =
-              updates.status && closedStatuses.includes(updates.status)
+              updates.status === 'resolved'
                 ? new Date().toISOString()
                 : updates.status
                   ? undefined
@@ -101,14 +100,14 @@ export const useTicketStore = create<TicketState>()(
           }),
         }));
         if (updated) {
-          const isClosed = updates.status === 'closed' || updates.status === 'resolved';
+          const isClosed = updates.status === 'resolved';
           useNotificationStore.getState().addNotification({
             message: isClosed
               ? `Ticket ${isClosed ? updates.status : 'updated'}`
               : `Ticket updated${updates.status ? ` to ${updates.status.replace('_', ' ')}` : ''}${updates.priority ? `, priority: ${updates.priority}` : ''}`,
             ticketNumber: updated.ticketNumber,
             ticketId: updated.id,
-            type: isClosed ? 'ticket_closed' : 'ticket_updated',
+            type: isClosed ? 'ticket_resolved' : 'ticket_updated',
           });
         }
         return updated;
@@ -182,8 +181,8 @@ export const useTicketStore = create<TicketState>()(
             }
           }
 
-          // Boost resolved/closed tickets (they likely have solutions)
-          if (ticket.status === 'resolved' || ticket.status === 'closed') {
+          // Boost resolved tickets (they likely have solutions)
+          if (ticket.status === 'resolved') {
             score += 3;
           }
 

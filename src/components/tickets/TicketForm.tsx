@@ -8,8 +8,8 @@ import { useAuth } from '../../hooks/useAuth';
 import ImageUpload from '../ui/ImageUpload';
 import type { TicketType, TicketPriority } from '../../types';
 
-const DEFAULT_ASSIGNED = ['oggie', 'tayyab'];
-const DEFAULT_CC = ['kristina', 'robin', 'pbieda'];
+const DEFAULT_ASSIGNED_USERNAMES = ['oggie', 'tayyab'];
+const DEFAULT_CC_USERNAMES = ['kristina', 'robin', 'pbieda'];
 
 interface TicketFormProps {
   onSuccess?: (ticketNumber: string) => void;
@@ -22,14 +22,17 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
   const [loading, setLoading] = useState(false);
   const [linkToAccount, setLinkToAccount] = useState(true);
   const [images, setImages] = useState<string[]>([]);
-  const [assignedTo, setAssignedTo] = useState<string[]>(DEFAULT_ASSIGNED);
-  const [ccEmails, setCcEmails] = useState<string[]>(DEFAULT_CC);
+  const [assignedTo, setAssignedTo] = useState<string[]>(DEFAULT_ASSIGNED_USERNAMES);
+  const [ccEmails, setCcEmails] = useState<string[]>(DEFAULT_CC_USERNAMES);
   const [submitAsUserId, setSubmitAsUserId] = useState<string>('');
 
   const availableUsers = useMemo(
-    () => allUsers.filter((u) => !u.suspended).map((u) => ({ username: u.username, name: u.name, email: u.email })),
+    () => allUsers.filter((u) => !u.suspended && u.username).map((u) => ({ username: u.username!, name: u.name, email: u.email })),
     [allUsers]
   );
+
+  const validUsernames = useMemo(() => new Set(availableUsers.map((u) => u.username)), [availableUsers]);
+
   const [form, setForm] = useState({
     type: 'general' as TicketType,
     subject: '',
@@ -65,8 +68,8 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
       const ticket = createTicket({
         ...submitData,
         userId: submitAsUser ? submitAsUser.id : (isLoggedIn && linkToAccount ? user!.id : undefined),
-        assignedTo,
-        ccEmails,
+        assignedTo: assignedTo.filter((u) => u && validUsernames.has(u)),
+        ccEmails: ccEmails.filter((u) => u && validUsernames.has(u)),
         images,
       });
 
@@ -101,12 +104,12 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
             onChange={(e) => setSubmitAsUserId(e.target.value)}
             className="input"
           >
-            <option value="">Myself ({user?.name})</option>
+            <option value="">Myself ({user?.username || user?.name})</option>
             {allUsers
               .filter((u) => u.id !== user?.id && !u.suspended)
               .map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.name} ({u.email}) — {u.role}
+                  {u.username || u.name}
                 </option>
               ))}
           </select>
@@ -212,17 +215,14 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
       <div>
         <label className="label">Assigned To</label>
         <div className="flex flex-wrap gap-2 mb-2">
-          {assignedTo.map((username) => {
-            const u = availableUsers.find((au) => au.username === username);
-            return (
+          {assignedTo.filter((un) => un && validUsernames.has(un)).map((username) => (
               <span key={username} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-crane/20 text-crane">
-                @{username}{u ? ` (${u.name})` : ''}
-                <button type="button" onClick={() => setAssignedTo((prev) => prev.filter((a) => a !== username))} className="hover:text-white">
+                @{username}
+                <button type="button" onClick={() => setAssignedTo((prev) => prev.filter((a) => a !== username))} className="hover:text-white cursor-pointer">
                   <X size={12} />
                 </button>
               </span>
-            );
-          })}
+          ))}
         </div>
         <select
           className="select"
@@ -239,7 +239,7 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
             .filter((u) => !assignedTo.includes(u.username))
             .map((u) => (
               <option key={u.username} value={u.username}>
-                @{u.username} — {u.name}
+                @{u.username}
               </option>
             ))}
         </select>
@@ -249,17 +249,14 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
       <div>
         <label className="label">CC</label>
         <div className="flex flex-wrap gap-2 mb-2">
-          {ccEmails.map((username) => {
-            const u = availableUsers.find((au) => au.username === username);
-            return (
+          {ccEmails.filter((un) => un && validUsernames.has(un)).map((username) => (
               <span key={username} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-white/[0.06] text-gray-300">
-                @{username}{u ? ` (${u.name})` : ''}
-                <button type="button" onClick={() => setCcEmails((prev) => prev.filter((c) => c !== username))} className="hover:text-white">
+                @{username}
+                <button type="button" onClick={() => setCcEmails((prev) => prev.filter((c) => c !== username))} className="hover:text-white cursor-pointer">
                   <X size={12} />
                 </button>
               </span>
-            );
-          })}
+          ))}
         </div>
         <select
           className="select"
@@ -276,7 +273,7 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
             .filter((u) => !ccEmails.includes(u.username))
             .map((u) => (
               <option key={u.username} value={u.username}>
-                @{u.username} — {u.name}
+                @{u.username}
               </option>
             ))}
         </select>

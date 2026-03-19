@@ -11,7 +11,7 @@ interface UIState {
 
 export const useUIStore = create<UIState>()((set) => ({
   searchQuery: '',
-  sortField: 'createdAt',
+  sortField: 'lastResponse',
   sortOrder: 'desc',
   setSearchQuery: (q) => set({ searchQuery: q }),
   setSortField: (field) =>

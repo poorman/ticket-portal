@@ -1,6 +1,6 @@
 export type UserRole = 'user' | 'admin';
 export type TicketType = 'support' | 'bug' | 'feature_request' | 'general';
-export type TicketStatus = 'open' | 'in_progress' | 'waiting_response' | 'resolved' | 'closed';
+export type TicketStatus = 'open' | 'in_progress' | 'waiting_response' | 'resolved';
 export type TicketPriority = 'low' | 'medium' | 'high';
 
 export interface User {

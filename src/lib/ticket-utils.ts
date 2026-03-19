@@ -16,7 +16,6 @@ export function getStatusDisplay(status: TicketStatus): string {
     in_progress: 'In Progress',
     waiting_response: 'Waiting Response',
     resolved: 'Resolved',
-    closed: 'Closed',
   };
   return map[status] || status;
 }

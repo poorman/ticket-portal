@@ -6,7 +6,6 @@ const styles: Record<TicketStatus, string> = {
   in_progress: 'bg-amber-500/15 text-amber-400',
   waiting_response: 'bg-blue-500/15 text-blue-400',
   resolved: 'bg-emerald-500/15 text-emerald-400',
-  closed: 'bg-gray-500/15 text-gray-400',
 };
 
 export default function StatusBadge({ status }: { status: TicketStatus }) {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Send, Lock, UserCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTicketStore } from '../../store/ticketStore';
@@ -21,6 +21,81 @@ export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: Re
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [respondAsUserId, setRespondAsUserId] = useState<string>('');
+
+  // @mention autocomplete state
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mentionListRef = useRef<HTMLDivElement>(null);
+
+  const activeUsers = users.filter((u) => !u.suspended);
+
+  const mentionResults = mentionQuery !== null
+    ? activeUsers.filter((u) => {
+        const q = mentionQuery.toLowerCase();
+        return u.username.toLowerCase().includes(q) || u.name.toLowerCase().includes(q);
+      }).slice(0, 6)
+    : [];
+
+  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setMessage(val);
+
+    const pos = e.target.selectionStart;
+    const textBefore = val.slice(0, pos);
+    const match = textBefore.match(/@(\w*)$/);
+    if (match) {
+      setMentionQuery(match[1]);
+      setMentionIndex(0);
+    } else {
+      setMentionQuery(null);
+    }
+  }, []);
+
+  const insertMention = useCallback((username: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const pos = textarea.selectionStart;
+    const textBefore = message.slice(0, pos);
+    const textAfter = message.slice(pos);
+    const atPos = textBefore.lastIndexOf('@');
+    const newText = textBefore.slice(0, atPos) + '@' + username + ' ' + textAfter;
+    setMessage(newText);
+    setMentionQuery(null);
+
+    // Restore focus and cursor position
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const newPos = atPos + username.length + 2;
+      textarea.setSelectionRange(newPos, newPos);
+    });
+  }, [message]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionQuery === null || mentionResults.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setMentionIndex((prev) => (prev + 1) % mentionResults.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setMentionIndex((prev) => (prev - 1 + mentionResults.length) % mentionResults.length);
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      insertMention(mentionResults[mentionIndex].username);
+    } else if (e.key === 'Escape') {
+      setMentionQuery(null);
+    }
+  }, [mentionQuery, mentionResults, mentionIndex, insertMention]);
+
+  // Scroll active item into view
+  useEffect(() => {
+    if (mentionListRef.current) {
+      const active = mentionListRef.current.children[mentionIndex] as HTMLElement;
+      if (active) active.scrollIntoView({ block: 'nearest' });
+    }
+  }, [mentionIndex]);
 
   const getRespondAsUser = () => {
     if (!isAdmin || !respondAsUserId) return null;
@@ -75,6 +150,7 @@ export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: Re
       setImages([]);
       setIsInternal(false);
       setRespondAsUserId('');
+      setMentionQuery(null);
       onSuccess?.();
     } finally {
       setLoading(false);
@@ -94,28 +170,63 @@ export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: Re
             onChange={(e) => setRespondAsUserId(e.target.value)}
             className="input"
           >
-            <option value="">Myself ({user?.name})</option>
+            <option value="">Myself ({user?.username || user?.name})</option>
             {users
               .filter((u) => u.id !== user?.id && !u.suspended)
               .map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.name} ({u.email}) — {u.role}
+                  {u.username || u.name}
                 </option>
               ))}
           </select>
         </div>
       )}
 
-      <div>
+      <div className="relative">
         <label className="label">Add Response</label>
         <textarea
+          ref={textareaRef}
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type your response..."
+          onChange={handleTextChange}
+          onKeyDown={handleKeyDown}
+          placeholder="Type your response... Use @ to mention users"
           className="textarea"
           rows={4}
           required
         />
+
+        {/* @mention autocomplete dropdown */}
+        {mentionQuery !== null && mentionResults.length > 0 && (
+          <div
+            ref={mentionListRef}
+            className="absolute left-0 right-0 bottom-full mb-1 z-50 max-h-48 overflow-y-auto rounded-lg border border-white/[0.08] bg-[#1a1a1f]/95 backdrop-blur-xl shadow-2xl py-1"
+          >
+            {mentionResults.map((u, idx) => (
+              <button
+                key={u.id}
+                type="button"
+                className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${
+                  idx === mentionIndex
+                    ? 'bg-crane/10 text-white'
+                    : 'text-gray-300 hover:bg-white/[0.04]'
+                }`}
+                onMouseDown={(e) => {
+                  e.preventDefault(); // prevent textarea blur
+                  insertMention(u.username);
+                }}
+                onMouseEnter={() => setMentionIndex(idx)}
+              >
+                <div className="w-7 h-7 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0 text-xs font-medium text-crane">
+                  {u.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{u.name}</p>
+                  <p className="text-xs text-gray-500 truncate">@{u.username}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <ImageUpload images={images} onChange={setImages} />

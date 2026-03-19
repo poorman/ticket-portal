@@ -126,7 +126,7 @@ export default function TicketDetails({ ticket, showInternalNotes = false }: Tic
         <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">
           Responses ({responses.length})
         </h3>
-        <ResponseTimeline responses={responses} />
+        <ResponseTimeline responses={responses} ticketCreatorId={ticket.userId} />
       </div>
     </div>
   );

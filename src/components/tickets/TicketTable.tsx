@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
 import { useTicketStore } from '../../store/ticketStore';
+import { useReadStore } from '../../store/readStore';
 import StatusBadge from '../ui/StatusBadge';
 import PriorityBadge from '../ui/PriorityBadge';
 import TypeBadge from '../ui/TypeBadge';
@@ -20,13 +21,36 @@ interface TicketTableProps {
 export default function TicketTable({ tickets, linkPrefix = '/tickets' }: TicketTableProps) {
   const { sortField, sortOrder, setSortField } = useUIStore();
   const responses = useTicketStore((s) => s.responses);
+  const seenCounts = useReadStore((s) => s.seenCounts);
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
 
+  const getResponseCount = (ticketId: number) =>
+    responses.filter((r) => r.ticketId === ticketId).length;
+
+  const hasNewResponses = (ticketId: number): boolean => {
+    const currentCount = getResponseCount(ticketId);
+    const seen = seenCounts[ticketId] ?? 0;
+    return currentCount > seen;
+  };
+
+  const getLastResponseDate = (ticketId: number): string => {
+    const ticketResponses = responses.filter((r) => r.ticketId === ticketId);
+    if (ticketResponses.length === 0) return '';
+    return ticketResponses.reduce((latest, r) => r.createdAt > latest ? r.createdAt : latest, '');
+  };
+
   const sorted = [...tickets].sort((a, b) => {
-    const aVal = a[sortField as keyof Ticket] ?? '';
-    const bVal = b[sortField as keyof Ticket] ?? '';
-    const cmp = String(aVal).localeCompare(String(bVal), undefined, { numeric: true });
+    let aVal: string;
+    let bVal: string;
+    if (sortField === 'lastResponse') {
+      aVal = getLastResponseDate(a.id) || a.updatedAt;
+      bVal = getLastResponseDate(b.id) || b.updatedAt;
+    } else {
+      aVal = String(a[sortField as keyof Ticket] ?? '');
+      bVal = String(b[sortField as keyof Ticket] ?? '');
+    }
+    const cmp = aVal.localeCompare(bVal, undefined, { numeric: true });
     return sortOrder === 'asc' ? cmp : -cmp;
   });
 
@@ -49,9 +73,6 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
       </span>
     </th>
   );
-
-  const getResponseCount = (ticketId: number) =>
-    responses.filter((r) => r.ticketId === ticketId).length;
 
   const Pagination = () => {
     if (totalPages <= 1) return null;
@@ -116,7 +137,12 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
                 className="card card-hover block no-underline text-inherit"
               >
                 <div className="flex items-start justify-between gap-3 mb-2">
-                  <span className="text-sm font-medium text-crane">{ticket.ticketNumber}</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-crane">{ticket.ticketNumber}</span>
+                    {hasNewResponses(ticket.id) && (
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-crane/20 text-crane leading-none">new</span>
+                    )}
+                  </span>
                   <span className="text-xs text-gray-500 shrink-0">{formatDateShort(ticket.createdAt)}</span>
                 </div>
                 <h3 className="text-sm font-medium text-white truncate mb-2">{ticket.subject}</h3>
@@ -151,6 +177,7 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
               <SortHeader field="status">Status</SortHeader>
               <SortHeader field="priority">Priority</SortHeader>
               <SortHeader field="type">Type</SortHeader>
+              <SortHeader field="lastResponse">Responses</SortHeader>
               <SortHeader field="createdAt">Created</SortHeader>
             </tr>
           </thead>
@@ -165,8 +192,13 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
                 onClick={() => navigate(`${linkPrefix}/${ticket.id}`)}
               >
                 <td className="px-4 py-3">
-                  <span className="text-sm font-medium text-crane">
-                    {ticket.ticketNumber}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-crane">
+                      {ticket.ticketNumber}
+                    </span>
+                    {hasNewResponses(ticket.id) && (
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-crane/20 text-crane leading-none">new</span>
+                    )}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-300 max-w-[300px] truncate">
@@ -180,6 +212,12 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
                 </td>
                 <td className="px-4 py-3">
                   <TypeBadge type={ticket.type} />
+                </td>
+                <td className="px-4 py-3">
+                  <span className="inline-flex items-center gap-1.5 text-sm text-gray-400">
+                    <MessageSquare size={13} className="text-gray-500" />
+                    {getResponseCount(ticket.id)}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-500">
                   {formatDateShort(ticket.createdAt)}

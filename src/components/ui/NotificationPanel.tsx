@@ -10,14 +10,14 @@ const typeIcons: Record<Notification['type'], typeof Ticket> = {
   ticket_created: Ticket,
   ticket_updated: RefreshCw,
   response_added: MessageSquare,
-  ticket_closed: XCircle,
+  ticket_resolved: XCircle,
 };
 
 const typeColors: Record<Notification['type'], string> = {
   ticket_created: 'text-blue-400',
   ticket_updated: 'text-amber-400',
   response_added: 'text-emerald-400',
-  ticket_closed: 'text-gray-400',
+  ticket_resolved: 'text-emerald-400',
 };
 
 export default function NotificationPanel() {

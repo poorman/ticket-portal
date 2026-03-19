@@ -26,7 +26,7 @@ export default function SearchPage() {
     return res;
   }, [query, statusFilter, typeFilter, deepSearch]);
 
-  const resolvedCount = tickets.filter((t) => t.status === 'resolved' || t.status === 'closed').length;
+  const resolvedCount = tickets.filter((t) => t.status === 'resolved').length;
 
   const highlightMatch = (text: string, maxLen = 200) => {
     const truncated = text.length > maxLen ? text.slice(0, maxLen) + '...' : text;
@@ -116,7 +116,6 @@ export default function SearchPage() {
             <option value="open">Open</option>
             <option value="in_progress">In Progress</option>
             <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
           </select>
           <select
             value={typeFilter}
@@ -157,7 +156,7 @@ export default function SearchPage() {
                         <StatusBadge status={result.ticket.status} />
                         <PriorityBadge priority={result.ticket.priority} />
                         <TypeBadge type={result.ticket.type} />
-                        {(result.ticket.status === 'resolved' || result.ticket.status === 'closed') && (
+                        {result.ticket.status === 'resolved' && (
                           <span className="badge bg-emerald-500/10 text-emerald-400">
                             <CheckCircle size={10} className="mr-1" /> Has solution
                           </span>

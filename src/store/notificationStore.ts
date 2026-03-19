@@ -6,7 +6,7 @@ export interface Notification {
   message: string;
   ticketNumber?: string;
   ticketId?: number;
-  type: 'ticket_created' | 'ticket_updated' | 'response_added' | 'ticket_closed';
+  type: 'ticket_created' | 'ticket_updated' | 'response_added' | 'ticket_resolved';
   read: boolean;
   createdAt: string;
 }

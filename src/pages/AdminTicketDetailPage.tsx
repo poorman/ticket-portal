@@ -8,13 +8,15 @@ import ResponseForm from '../components/tickets/ResponseForm';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useTicketStore } from '../store/ticketStore';
+import { useReadStore } from '../store/readStore';
 import type { Ticket, TicketStatus, TicketPriority } from '../types';
 
 export default function AdminTicketDetailPage() {
   const user = useRequireAuth(true);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getTicketById, updateTicket, deleteTicket } = useTicketStore();
+  const { getTicketById, updateTicket, deleteTicket, responses: allResponses } = useTicketStore();
+  const markSeen = useReadStore((s) => s.markSeen);
   const [ticket, setTicket] = useState<Ticket | undefined>(undefined);
   const [status, setStatus] = useState<TicketStatus>('open');
   const [priority, setPriority] = useState<TicketPriority>('medium');
@@ -26,8 +28,10 @@ export default function AdminTicketDetailPage() {
       setTicket(t);
       setStatus(t.status);
       setPriority(t.priority);
+      const count = allResponses.filter((r) => r.ticketId === t.id).length;
+      markSeen(t.id, count);
     }
-  }, [id, getTicketById]);
+  }, [id, getTicketById, allResponses, markSeen]);
 
   const refreshTicket = () => {
     const t = getTicketById(Number(id));
@@ -47,8 +51,8 @@ export default function AdminTicketDetailPage() {
 
   const handleClose = () => {
     if (!ticket) return;
-    updateTicket(ticket.id, { status: 'closed' });
-    toast.success('Ticket closed');
+    updateTicket(ticket.id, { status: 'resolved' });
+    toast.success('Ticket resolved');
     refreshTicket();
   };
 
@@ -103,7 +107,6 @@ export default function AdminTicketDetailPage() {
                       <option value="in_progress">In Progress</option>
                       <option value="waiting_response">Waiting Response</option>
                       <option value="resolved">Resolved</option>
-                      <option value="closed">Closed</option>
                     </select>
                   </div>
 
@@ -127,10 +130,10 @@ export default function AdminTicketDetailPage() {
                     Update Ticket
                   </button>
 
-                  {ticket.status !== 'closed' && (
+                  {ticket.status !== 'resolved' && (
                     <button onClick={handleClose} className="btn btn-secondary flex-1 lg:w-full">
                       <XCircle size={16} />
-                      Close Ticket
+                      Resolve Ticket
                     </button>
                   )}
                 </div>

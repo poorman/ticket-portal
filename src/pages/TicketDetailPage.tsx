@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { ArrowLeft, Lock, Mail } from 'lucide-react';
+import { ArrowLeft, Lock, Mail, PartyPopper } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AnimatedPage from '../components/layout/AnimatedPage';
 import TicketDetails from '../components/tickets/TicketDetails';
 import ResponseForm from '../components/tickets/ResponseForm';
+import confetti from 'canvas-confetti';
 import { useTicketStore } from '../store/ticketStore';
+import { useReadStore } from '../store/readStore';
 import { useAuth } from '../hooks/useAuth';
 import type { Ticket } from '../types';
 
@@ -15,7 +17,10 @@ export default function TicketDetailPage() {
   const fromSearch = searchParams.get('from') === 'search';
   const { user, isAdmin } = useAuth();
   const tickets = useTicketStore((s) => s.tickets);
+  const responses = useTicketStore((s) => s.responses);
   const getById = useTicketStore((s) => s.getTicketById);
+  const updateTicket = useTicketStore((s) => s.updateTicket);
+  const markSeen = useReadStore((s) => s.markSeen);
   const [ticket, setTicket] = useState<Ticket | undefined>(undefined);
   const [verified, setVerified] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -30,7 +35,11 @@ export default function TicketDetailPage() {
       const hasAccess = isAdmin || user.id === t.userId || user.email === t.submitterEmail;
       setVerified(hasAccess);
     }
-  }, [id, tickets, getById, user, isAdmin]);
+    if (t) {
+      const count = responses.filter((r) => r.ticketId === t.id).length;
+      markSeen(t.id, count);
+    }
+  }, [id, tickets, responses, getById, user, isAdmin, markSeen]);
 
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +80,24 @@ export default function TicketDetailPage() {
   }
 
   const canRespond = !!user || verified;
+
+  const ticketResponses = responses.filter((r) => r.ticketId === ticket.id);
+  const isSubmitter = user?.id === ticket.userId || (verified && email.toLowerCase() === ticket.submitterEmail.toLowerCase());
+  const assigned = ticket.assignedTo ?? [];
+  const isAssigned = user ? assigned.includes(String(user.id)) || assigned.includes(user.username ?? '') || assigned.includes(user.name) : false;
+  const canResolve = (isSubmitter || isAssigned) && ticketResponses.length > 0 && ticket.status !== 'resolved';
+
+  const handleResolve = () => {
+    updateTicket(ticket.id, { status: 'resolved' });
+    setTicket({ ...getById(ticket.id)!, status: 'resolved' });
+    toast.success('Ticket resolved!');
+    confetti({
+      particleCount: 120,
+      spread: 80,
+      origin: { y: 0.7 },
+      colors: ['#d4a574', '#f5d5a0', '#fff', '#b8860b'],
+    });
+  };
 
   return (
     <AnimatedPage>
@@ -131,6 +158,18 @@ export default function TicketDetailPage() {
                 Cancel
               </button>
             </form>
+          </div>
+        )}
+
+        {canResolve && (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={handleResolve}
+              className="btn bg-gradient-to-r from-crane/80 to-amber-600/80 text-white hover:from-crane hover:to-amber-600 px-8 py-3 text-base font-semibold shadow-lg shadow-crane/20 transition-all hover:scale-105 cursor-pointer"
+            >
+              <PartyPopper size={18} />
+              Resolve It
+            </button>
           </div>
         )}
 

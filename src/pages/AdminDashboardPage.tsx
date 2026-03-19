@@ -33,12 +33,11 @@ export default function AdminDashboardPage() {
     const open = tickets.filter((t) => t.status === 'open').length;
     const inProgress = tickets.filter((t) => t.status === 'in_progress').length;
     const resolved = tickets.filter((t) => t.status === 'resolved').length;
-    const closed = tickets.filter((t) => t.status === 'closed').length;
-    const highPriority = tickets.filter((t) => t.priority === 'high' && t.status !== 'closed' && t.status !== 'resolved').length;
+    const highPriority = tickets.filter((t) => t.priority === 'high' && t.status !== 'resolved').length;
     const today = tickets.filter((t) => t.createdAt.startsWith(new Date().toISOString().split('T')[0])).length;
-    const resolutionRate = tickets.length > 0 ? Math.round(((resolved + closed) / tickets.length) * 100) : 0;
+    const resolutionRate = tickets.length > 0 ? Math.round((resolved / tickets.length) * 100) : 0;
 
-    return { total: tickets.length, open, inProgress, resolved, closed, highPriority, today, resolutionRate };
+    return { total: tickets.length, open, inProgress, resolved, highPriority, today, resolutionRate };
   }, [tickets]);
 
   if (!user) return null;
