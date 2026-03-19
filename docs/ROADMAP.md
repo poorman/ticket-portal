@@ -1,26 +1,28 @@
 # Roadmap
 
-Items remaining to complete the rewrite and potential future enhancements.
+Items completed during the rewrite and potential future enhancements.
 
 ---
 
-## Immediate (Rewrite Completion)
+## Completed (Rewrite)
 
-These items are needed to finish the Next.js-to-Vite migration:
+These items were completed as part of the Next.js-to-Vite migration:
 
-- [ ] **Production build verification** -- Run `npm run build` and `npm run preview` to confirm the static output works correctly
-- [ ] **Dev server smoke test** -- Run `npm run dev` and manually test all 10 routes
-- [ ] **Docker deployment files** -- Create `nginx.conf`, `Dockerfile` (multi-stage node build + nginx), `docker-compose.yml`, `.dockerignore`
-- [ ] **Clean up legacy files** -- Remove leftover `.env`, `.env.development`, `.env.example` files from the old Next.js project
-- [ ] **Update .gitignore** -- Ensure `dist/`, `node_modules/`, `.env` are covered for the Vite project
-- [ ] **Update CLAUDE.md** -- Reflect the new tech stack, commands (`npm run dev`, `npm run build`), and project structure
+- [x] **Production build verification** -- `npm run build` and `npm run preview` confirmed working
+- [x] **Dev server smoke test** -- All 10 routes tested and functional
+- [x] **Docker deployment files** -- `nginx.conf`, `Dockerfile` (multi-stage node build + nginx), `docker-compose.yml`, `.dockerignore` created
+- [x] **Clean up legacy files** -- Removed leftover `.env`, `.env.development`, `.env.example` files
+- [x] **Update .gitignore** -- Covers `dist/`, `node_modules/`, `.env` for Vite project
+- [x] **Update CLAUDE.md** -- Reflects the new tech stack and commands
+- [x] **Dark glassmorphism redesign** -- Full visual overhaul with dark theme and glass-effect UI
+- [x] **Knowledge Base search page** -- Added SearchPage at `/search`
 
 ---
 
 ## Short-Term Enhancements
 
 - [ ] **Seed sample data** -- Create a `src/lib/seed.ts` that populates 5-10 demo tickets on first load so the app doesn't start empty
-- [ ] **Responsive polish** -- Test and fix mobile layouts for all pages, especially TicketTable and AdminTicketDetailPage sidebar
+- [x] **Responsive polish** -- Mobile card view for TicketTable, admin sidebar reordered first on mobile, flex-wrap on badges/timestamps, responsive thumbnails and stat cards
 - [ ] **Accessibility** -- Add ARIA labels to interactive elements, ensure keyboard navigation works, check color contrast ratios
 - [ ] **Error boundary** -- Add a React error boundary component wrapping `<Outlet />` for graceful crash recovery
 - [ ] **Loading states** -- Add skeleton/shimmer placeholders during store rehydration
@@ -31,9 +33,8 @@ These items are needed to finish the Next.js-to-Vite migration:
 
 - [ ] **Assignee system** -- Add an `assignedTo` field on tickets, implement the AssignFilter dropdown that currently exists as a placeholder
 - [ ] **Ticket filtering** -- Filter by status, priority, type, and date range on HomePage and AdminDashboardPage
-- [ ] **Pagination** -- Virtual scrolling or page-based pagination for large ticket lists
-- [ ] **Notification center** -- In-app notification panel tracking ticket updates (replacing simulated email toasts)
-- [ ] **Dark mode** -- Toggle between light and dark themes using Tailwind's `dark:` variant
+- [x] **Pagination** -- Page-based pagination (10 per page) on TicketTable for both mobile cards and desktop table views
+- [x] **Notification center** -- In-app notification panel in Navbar with bell icon, unread badge, mark-read/clear; fires on ticket create, update, response, and close via `notificationStore`
 - [ ] **Export/Import** -- JSON export of all localStorage data for backup; import to restore state
 
 ---
@@ -56,5 +57,5 @@ If the app needs to support real multi-user workflows:
 
 - [ ] **Code splitting** -- Lazy-load page components with `React.lazy()` + `Suspense` to reduce initial bundle size
 - [ ] **localStorage limits** -- Add storage quota monitoring and warn users when approaching the ~5MB browser limit
-- [ ] **Image compression** -- Compress images client-side before base64 encoding to reduce storage footprint
+- [x] **Image compression** -- Canvas-based compression: resizes to max 1920px, JPEG at 80% quality; shows spinner during compress; 10MB raw upload limit
 - [ ] **Memoization audit** -- Review `useMemo` usage in pages to prevent unnecessary re-renders on large datasets

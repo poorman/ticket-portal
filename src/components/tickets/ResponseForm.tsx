@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Send, Lock } from 'lucide-react';
+import { Send, Lock, UserCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTicketStore } from '../../store/ticketStore';
+import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
 import ImageUpload from '../ui/ImageUpload';
 
@@ -13,11 +14,18 @@ interface ResponseFormProps {
 
 export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: ResponseFormProps) {
   const { user, isAdmin } = useAuth();
+  const users = useAuthStore((s) => s.users);
   const addResponse = useTicketStore((s) => s.addResponse);
   const [message, setMessage] = useState('');
   const [isInternal, setIsInternal] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [respondAsUserId, setRespondAsUserId] = useState<string>('');
+
+  const getRespondAsUser = () => {
+    if (!isAdmin || !respondAsUserId) return null;
+    return users.find((u) => u.id === Number(respondAsUserId));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,25 +34,47 @@ export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: Re
       return;
     }
 
+    const respondAs = getRespondAsUser();
+
     setLoading(true);
     try {
       addResponse({
         ticketId,
-        userId: user?.id,
-        userName: user?.name || submitterEmail || 'Anonymous',
-        userRole: user?.role,
+        userId: respondAs?.id ?? user?.id,
+        userName: respondAs?.name ?? (user?.name || submitterEmail || 'Anonymous'),
+        userRole: respondAs?.role ?? user?.role,
         message: message.trim(),
         images,
         isInternal: isAdmin ? isInternal : false,
       });
 
-      if (!isInternal) {
+      // Detect @mentions and notify tagged users
+      const mentions = message.match(/@(\w+)/g);
+      if (mentions && !isInternal) {
+        const mentionedNames = mentions.map((m) => m.slice(1).toLowerCase());
+        const mentionedUsers = users.filter((u) =>
+          mentionedNames.some(
+            (name) =>
+              u.name.toLowerCase().includes(name) ||
+              u.username.toLowerCase() === name
+          )
+        );
+        for (const mu of mentionedUsers) {
+          toast(`Email sent to ${mu.name} (${mu.email}) — mentioned in response`, { icon: '📧', duration: 4000 });
+        }
+        if (mentionedUsers.length === 0 && mentions.length > 0) {
+          toast(`Could not match ${mentions.join(', ')} to any user`, { icon: '⚠️' });
+        }
+      }
+
+      if (!isInternal && (!mentions || mentions.length === 0)) {
         toast(`Email notification would be sent`, { icon: '📧' });
       }
       toast.success('Response added');
       setMessage('');
       setImages([]);
       setIsInternal(false);
+      setRespondAsUserId('');
       onSuccess?.();
     } finally {
       setLoading(false);
@@ -53,6 +83,29 @@ export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: Re
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {isAdmin && (
+        <div>
+          <label className="label flex items-center gap-2">
+            <UserCircle size={16} className="text-amber-500" />
+            Respond as
+          </label>
+          <select
+            value={respondAsUserId}
+            onChange={(e) => setRespondAsUserId(e.target.value)}
+            className="input"
+          >
+            <option value="">Myself ({user?.name})</option>
+            {users
+              .filter((u) => u.id !== user?.id && !u.suspended)
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.email}) — {u.role}
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
+
       <div>
         <label className="label">Add Response</label>
         <textarea
@@ -80,10 +133,12 @@ export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: Re
         </label>
       )}
 
-      <button type="submit" disabled={loading} className="btn btn-primary">
-        <Send size={16} />
-        {loading ? 'Sending...' : 'Send Response'}
-      </button>
+      <div className="flex justify-center">
+        <button type="submit" disabled={loading} className="btn btn-primary">
+          <Send size={16} />
+          {loading ? 'Sending...' : 'Send Response'}
+        </button>
+      </div>
     </form>
   );
 }

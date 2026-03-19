@@ -153,7 +153,7 @@ Route guard hook. Accepts optional `adminOnly` boolean. Redirects to `/login` if
 
 ---
 
-## Pages (`src/pages/`)
+## Pages (`src/pages/`) — 11 routes
 
 | Page                     | Route                  | Auth     | Description                                           |
 |--------------------------|------------------------|----------|-------------------------------------------------------|
@@ -166,4 +166,5 @@ Route guard hook. Accepts optional `adminOnly` boolean. Redirects to `/login` if
 | `DashboardPage`          | `/dashboard`           | User     | Personal ticket overview with stats                   |
 | `AdminDashboardPage`     | `/admin`               | Admin    | All tickets overview with charts and priority alerts  |
 | `AdminTicketDetailPage`  | `/admin/tickets/:id`   | Admin    | Full ticket management (status, priority, delete, internal notes) |
+| `SearchPage`             | `/search`              | Public   | Knowledge base search with filtered results           |
 | `NotFoundPage`           | `*`                    | Public   | 404 page                                             |

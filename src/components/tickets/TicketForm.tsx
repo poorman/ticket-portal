@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Send, X } from 'lucide-react';
+import { Send, X, UserCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import toast from 'react-hot-toast';
 import { useTicketStore } from '../../store/ticketStore';
@@ -16,7 +16,7 @@ interface TicketFormProps {
 }
 
 export default function TicketForm({ onSuccess }: TicketFormProps) {
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, isAdmin } = useAuth();
   const createTicket = useTicketStore((s) => s.createTicket);
   const allUsers = useAuthStore((s) => s.users);
   const [loading, setLoading] = useState(false);
@@ -24,6 +24,7 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
   const [images, setImages] = useState<string[]>([]);
   const [assignedTo, setAssignedTo] = useState<string[]>(DEFAULT_ASSIGNED);
   const [ccEmails, setCcEmails] = useState<string[]>(DEFAULT_CC);
+  const [submitAsUserId, setSubmitAsUserId] = useState<string>('');
 
   const availableUsers = useMemo(
     () => allUsers.filter((u) => !u.suspended).map((u) => ({ username: u.username, name: u.name, email: u.email })),
@@ -52,12 +53,18 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
 
     setLoading(true);
     try {
-      const submitData = isLoggedIn
-        ? { ...form, submitterName: user!.name, submitterEmail: user!.email, submitterPhone: user!.phone || form.submitterPhone }
-        : form;
+      const submitAsUser = isAdmin && submitAsUserId
+        ? allUsers.find((u) => u.id === Number(submitAsUserId))
+        : null;
+
+      const submitData = submitAsUser
+        ? { ...form, submitterName: submitAsUser.name, submitterEmail: submitAsUser.email, submitterPhone: submitAsUser.phone || form.submitterPhone }
+        : isLoggedIn
+          ? { ...form, submitterName: user!.name, submitterEmail: user!.email, submitterPhone: user!.phone || form.submitterPhone }
+          : form;
       const ticket = createTicket({
         ...submitData,
-        userId: isLoggedIn && linkToAccount ? user!.id : undefined,
+        userId: submitAsUser ? submitAsUser.id : (isLoggedIn && linkToAccount ? user!.id : undefined),
         assignedTo,
         ccEmails,
         images,
@@ -83,6 +90,29 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {isAdmin && (
+        <div>
+          <label className="label flex items-center gap-2">
+            <UserCircle size={16} className="text-amber-500" />
+            Submit as user
+          </label>
+          <select
+            value={submitAsUserId}
+            onChange={(e) => setSubmitAsUserId(e.target.value)}
+            className="input"
+          >
+            <option value="">Myself ({user?.name})</option>
+            {allUsers
+              .filter((u) => u.id !== user?.id && !u.suspended)
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.email}) — {u.role}
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="label">Ticket Type</label>

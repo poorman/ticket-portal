@@ -4,47 +4,61 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-WideSurf Support Portal — a ticket management system for support.widesurf.com. Built with Next.js 16 (App Router), React 19, Prisma ORM, PostgreSQL, and NextAuth v5 (credentials provider with JWT strategy).
+Crane Network Support Portal — a ticket management system built as a client-side SPA. React 18, Vite 6, TypeScript, TailwindCSS 3.4, Zustand for state management with localStorage persistence. No backend or database — all data lives in the browser.
 
 ## Commands
 
-- **Dev server**: `npm run dev` (uses custom `scripts/dev-server.js` with auto port detection from 3007)
-- **Build**: `npm run build` (runs `prisma generate && next build`)
-- **Lint**: `npm run lint` (ESLint with next/core-web-vitals + typescript configs)
-- **DB migrate**: `npm run prisma:migrate` or `npx prisma migrate dev`
-- **DB generate**: `npm run prisma:generate`
-- **DB seed**: `npm run prisma:seed` (creates admin user from env vars)
-- **DB reset**: `npx prisma migrate reset` (destructive)
+- **Dev server**: `npm run dev` (Vite dev server, default port 5173)
+- **Build**: `npm run build` (runs `tsc -b && vite build`, outputs to `dist/`)
+- **Preview**: `npm run preview` (serve production build locally)
+- **Lint**: `npm run lint` (ESLint)
 
 ## Architecture
 
-### Auth Flow
-NextAuth v5 with credentials provider in `lib/auth.ts`. JWT strategy stores `id` and `role` in token. Middleware (`middleware.ts`) protects `/dashboard/*` (requires auth) and `/admin/*` (requires admin role). Custom sign-in page at `/login`.
+### Auth
+Client-side auth via Zustand `authStore`. Users stored in localStorage. Passwords use base64 encoding (demo only). Default admin: `admin@widesurf.com` / `admin123`. Route protection via `useRequireAuth` hook.
 
-### Database (Prisma)
-Schema in `prisma/schema.prisma`. Three models:
-- **User**: email/password auth, `UserRole` enum (user/admin)
-- **Ticket**: unique `ticketNumber` (TKT-XXXX format), enums for type/status/priority, optional `userId` link, image attachments
-- **TicketResponse**: belongs to ticket, optional user, `isInternal` flag for admin-only notes, image attachments
+### State Management (Zustand)
+Three stores in `src/store/`:
+- **authStore** — users, session, login/register/logout. Persisted to `ticket-portal-auth`.
+- **ticketStore** — tickets, responses, full CRUD. Persisted to `ticket-portal-tickets`.
+- **uiStore** — search/sort/filter state. Not persisted.
 
-### API Routes (`app/api/`)
-- `auth/[...nextauth]/` — NextAuth handler
-- `auth/register/` — user registration
-- `tickets/route.ts` — ticket list/create
-- `tickets/[id]/` — single ticket operations
-- `upload/` — file upload handling
+### Data Model
+Defined in `src/types/index.ts`:
+- **User** — email/password auth, `UserRole` enum (user/admin)
+- **Ticket** — unique `ticketNumber` (TKT-XXXX format), enums for type/status/priority, image attachments as base64
+- **TicketResponse** — belongs to ticket, optional user, `isInternal` flag for admin-only notes
 
 ### Key Libraries
-- `lib/prisma.ts` — Prisma client singleton
-- `lib/auth.ts` — NextAuth config (exports `handlers`, `signIn`, `signOut`, `auth`)
-- `lib/email.ts` — Nodemailer email service with HTML templates
-- `lib/ticket-utils.ts` — ticket number generation and helpers
+- `src/lib/auth-utils.ts` — Password encoding helpers
+- `src/lib/ticket-utils.ts` — Display helpers, date formatting
+- `src/hooks/useAuth.ts` — Convenience auth hook
+- `src/hooks/useRequireAuth.ts` — Route guard hook
 
 ### Path Alias
-`@/*` maps to project root (configured in `tsconfig.json`).
+`@/*` maps to `./src/*` (configured in `tsconfig.json` and `vite.config.ts`).
 
 ### UI
-Neumorphic design system using CSS classes: `.neumorphic`, `.neumorphic-inset`, `.neumorphic-pressed`, `.neumorphic-hover`. Base color `#e0e5ec`. Uses Bulma CSS framework and react-hot-toast for notifications.
+Dark glassmorphism design with TailwindCSS. Custom component classes (`.btn`, `.card`, `.input`, etc.) in `src/index.css` via `@layer components`. Crane Network branding with gold/brown palette. Uses lucide-react icons, framer-motion animations, recharts for charts, canvas-confetti for effects, react-hot-toast for notifications.
+
+### Pages (10 routes)
+- `/` — HomePage (hero, stats, ticket table)
+- `/login` — LoginPage
+- `/register` — RegisterPage
+- `/submit` — SubmitPage (ticket creation)
+- `/track` — TrackPage (ticket lookup by number)
+- `/tickets/:id` — TicketDetailPage (email-gated)
+- `/dashboard` — DashboardPage (user's tickets)
+- `/admin` — AdminDashboardPage (all tickets, charts)
+- `/admin/tickets/:id` — AdminTicketDetailPage (full management)
+- `/search` — SearchPage (knowledge base search)
+
+### Component Structure
+- `src/components/layout/` — Navbar, Footer, PageLayout, AnimatedPage
+- `src/components/ui/` — Badges, StatCard, SearchInput, ConfirmDialog, ImageUpload, ImageGallery, EmptyState
+- `src/components/tickets/` — TicketForm, TicketTable, TicketCard, TicketList, TicketDetails, ResponseForm, ResponseTimeline
+- `src/components/charts/` — StatusPieChart, TicketsOverTimeChart
 
 ### Deployment
-Standalone Next.js output (`next.config.ts` has `output: 'standalone'`). Docker support via `Dockerfile.prod` and `docker-compose.prod.yml`. Traefik reverse proxy config in `traefik-config.yml`. Deploy scripts: `DEPLOY.sh`, `deploy-native.sh`, `START.sh`.
+Static SPA served by nginx in Docker. Multi-stage build: Node (build) → nginx (serve). Config files: `Dockerfile`, `docker-compose.yml`, `nginx.conf`, `.dockerignore`. SPA fallback via `try_files $uri /index.html`.

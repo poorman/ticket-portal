@@ -1,10 +1,15 @@
 import { motion } from 'framer-motion';
-import { MessageSquare, Lock, User, Shield } from 'lucide-react';
+import { MessageSquare, Lock, User, Shield, X } from 'lucide-react';
 import ImageGallery from '../ui/ImageGallery';
 import { formatDate } from '../../lib/ticket-utils';
+import { useTicketStore } from '../../store/ticketStore';
+import { useAuth } from '../../hooks/useAuth';
+import toast from 'react-hot-toast';
 import type { TicketResponse } from '../../types';
 
 export default function ResponseTimeline({ responses }: { responses: TicketResponse[] }) {
+  const { isAdmin } = useAuth();
+  const deleteResponse = useTicketStore((s) => s.deleteResponse);
   if (!responses.length) {
     return (
       <p className="text-sm text-gray-500 text-center py-8">No responses yet</p>
@@ -30,12 +35,24 @@ export default function ResponseTimeline({ responses }: { responses: TicketRespo
           </div>
 
           <div
-            className={`rounded p-4 ${
+            className={`rounded p-4 relative ${
               resp.isInternal
                 ? 'bg-amber-500/[0.08] border border-amber-500/20'
                 : 'bg-white/[0.03] border border-white/[0.06]'
             }`}
           >
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  deleteResponse(resp.id);
+                  toast.success('Response deleted');
+                }}
+                className="absolute top-2 right-2 p-1 rounded hover:bg-white/10 text-gray-500 hover:text-red-400 transition-colors"
+                title="Delete response"
+              >
+                <X size={14} />
+              </button>
+            )}
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2">
               <span className="text-sm font-medium text-white">
                 {resp.userName || 'Anonymous'}
@@ -58,7 +75,15 @@ export default function ResponseTimeline({ responses }: { responses: TicketRespo
                 {formatDate(resp.createdAt)}
               </span>
             </div>
-            <p className="text-sm text-gray-300 whitespace-pre-wrap">{resp.message}</p>
+            <p className="text-sm text-gray-300 whitespace-pre-wrap">
+              {resp.message.split(/(@\w+)/g).map((part, idx) =>
+                part.match(/^@\w+$/) ? (
+                  <span key={idx} className="text-amber-400 font-medium">{part}</span>
+                ) : (
+                  part
+                )
+              )}
+            </p>
             {resp.images.length > 0 && (
               <div className="mt-3">
                 <ImageGallery images={resp.images} />

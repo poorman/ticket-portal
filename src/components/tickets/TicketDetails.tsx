@@ -23,8 +23,9 @@ export default function TicketDetails({ ticket, showInternalNotes = false }: Tic
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Ticket Info — unified card */}
       <div className="card">
+        {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3 mb-2">
@@ -65,59 +66,59 @@ export default function TicketDetails({ ticket, showInternalNotes = false }: Tic
             <span className="truncate">{formatDate(ticket.updatedAt)}</span>
           </div>
         </div>
-      </div>
 
-      {/* Description */}
-      <div className="card">
-        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Description</h3>
-        <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
-        {ticket.images.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-white/[0.06]">
-            <h4 className="text-sm font-medium text-gray-500 mb-2">Attachments</h4>
-            <ImageGallery images={ticket.images} />
-          </div>
-        )}
-      </div>
-
-      {/* Contact Info & Assignment */}
-      <div className="card">
-        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Contact Information</h3>
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-gray-300 min-w-0">
-            <User size={14} className="text-gray-500 shrink-0" />
-            <span className="truncate">{ticket.submitterName}</span>
-          </div>
-          <div className="flex items-center gap-2 text-gray-300 min-w-0">
-            <Mail size={14} className="text-gray-500 shrink-0" />
-            <span className="truncate">{ticket.submitterEmail}</span>
-          </div>
-          {ticket.submitterPhone && (
-            <div className="flex items-center gap-2 text-gray-300">
-              <Phone size={14} className="text-gray-500" />
-              {ticket.submitterPhone}
+        {/* Description */}
+        <div className="border-t border-white/[0.06] mt-4 pt-4">
+          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Description</h3>
+          <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
+          {ticket.images.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-white/[0.06]">
+              <h4 className="text-sm font-medium text-gray-500 mb-2">Attachments</h4>
+              <ImageGallery images={ticket.images} />
             </div>
           )}
         </div>
-        {(ticket.assignedTo?.length > 0 || ticket.ccEmails?.length > 0) && (
-          <div className="border-t border-white/[0.06] mt-3 pt-3 space-y-2 text-sm">
-            {ticket.assignedTo?.length > 0 && (
-              <div>
-                <span className="text-gray-500 text-xs uppercase tracking-wide">Assigned to: </span>
-                <span className="text-crane">
-                  {ticket.assignedTo.map((u) => `@${u}`).join(', ')}
-                </span>
-              </div>
-            )}
-            {ticket.ccEmails?.length > 0 && (
-              <div>
-                <span className="text-gray-500 text-xs uppercase tracking-wide">CC: </span>
-                <span className="text-gray-300">
-                  {ticket.ccEmails.map((u) => `@${u}`).join(', ')}
-                </span>
+
+        {/* Contact Info & Assignment */}
+        <div className="border-t border-white/[0.06] mt-4 pt-4">
+          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Contact Information</h3>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            <div className="flex items-center gap-2 text-gray-300 min-w-0">
+              <User size={14} className="text-gray-500 shrink-0" />
+              <span className="truncate">{ticket.submitterName}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-300 min-w-0">
+              <Mail size={14} className="text-gray-500 shrink-0" />
+              <span className="truncate">{ticket.submitterEmail}</span>
+            </div>
+            {ticket.submitterPhone && (
+              <div className="flex items-center gap-2 text-gray-300">
+                <Phone size={14} className="text-gray-500" />
+                {ticket.submitterPhone}
               </div>
             )}
           </div>
-        )}
+          {(ticket.assignedTo?.length > 0 || ticket.ccEmails?.length > 0) && (
+            <div className="border-t border-white/[0.06] mt-3 pt-3 space-y-2 text-sm">
+              {ticket.assignedTo?.length > 0 && (
+                <div>
+                  <span className="text-gray-500 text-xs uppercase tracking-wide">Assigned to: </span>
+                  <span className="text-crane">
+                    {ticket.assignedTo.map((u) => `@${u}`).join(', ')}
+                  </span>
+                </div>
+              )}
+              {ticket.ccEmails?.length > 0 && (
+                <div>
+                  <span className="text-gray-500 text-xs uppercase tracking-wide">CC: </span>
+                  <span className="text-gray-300">
+                    {ticket.ccEmails.map((u) => `@${u}`).join(', ')}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Responses */}

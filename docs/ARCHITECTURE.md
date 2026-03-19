@@ -2,7 +2,7 @@
 
 ## Overview
 
-Crane Network Support Portal is a client-side single-page application (SPA) for ticket management. It runs entirely in the browser with no backend server -- all data is persisted to `localStorage` via Zustand stores.
+Crane Network Support Portal is a client-side single-page application (SPA) for ticket management. It runs entirely in the browser with no backend server -- all data is persisted to `localStorage` via Zustand stores. Features a dark glassmorphism UI with Crane Network gold/brown branding.
 
 ## Tech Stack
 
@@ -31,7 +31,7 @@ index.html
   |
   PageLayout (Navbar + Outlet + Footer)
   |
-  +-- Pages (10 route-level components)
+  +-- Pages (11 route-level components)
        |
        +-- Components (layout, ui, tickets, charts)
        |

@@ -27,6 +27,7 @@ interface TicketState {
   deepSearch: (query: string) => SearchResult[];
 
   addResponse: (data: CreateResponseInput) => TicketResponse;
+  deleteResponse: (responseId: number) => void;
   getResponsesForTicket: (ticketId: number, includeInternal: boolean) => TicketResponse[];
 }
 
@@ -223,6 +224,12 @@ export const useTicketStore = create<TicketState>()(
           });
         }
         return response;
+      },
+
+      deleteResponse: (responseId) => {
+        set((state) => ({
+          responses: state.responses.filter((r) => r.id !== responseId),
+        }));
       },
 
       getResponsesForTicket: (ticketId, includeInternal) => {
