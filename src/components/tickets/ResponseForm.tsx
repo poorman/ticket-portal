@@ -102,7 +102,7 @@ export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: Re
     return users.find((u) => u.id === Number(respondAsUserId));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) {
       toast.error('Please enter a message');
@@ -113,7 +113,7 @@ export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: Re
 
     setLoading(true);
     try {
-      addResponse({
+      await addResponse({
         ticketId,
         userId: respondAs?.id ?? user?.id,
         userName: respondAs?.name ?? (user?.name || submitterEmail || 'Anonymous'),

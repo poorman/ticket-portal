@@ -164,8 +164,8 @@ export default function ResponseTimeline({ responses, ticketCreatorId }: { respo
               </span>
               {isAdmin && (
                 <button
-                  onClick={() => {
-                    deleteResponse(resp.id);
+                  onClick={async () => {
+                    await deleteResponse(resp.id);
                     toast.success('Response deleted');
                   }}
                   className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-red-400 transition-colors shrink-0"

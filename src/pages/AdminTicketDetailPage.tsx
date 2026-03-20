@@ -15,7 +15,10 @@ export default function AdminTicketDetailPage() {
   const user = useRequireAuth(true);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getTicketById, updateTicket, deleteTicket, responses: allResponses } = useTicketStore();
+  const fetchTicketDetail = useTicketStore((s) => s.fetchTicketDetail);
+  const updateTicket = useTicketStore((s) => s.updateTicket);
+  const deleteTicket = useTicketStore((s) => s.deleteTicket);
+  const resolveTicket = useTicketStore((s) => s.resolveTicket);
   const markSeen = useReadStore((s) => s.markSeen);
   const [ticket, setTicket] = useState<Ticket | undefined>(undefined);
   const [status, setStatus] = useState<TicketStatus>('open');
@@ -23,42 +26,42 @@ export default function AdminTicketDetailPage() {
   const [showDelete, setShowDelete] = useState(false);
 
   useEffect(() => {
-    const t = getTicketById(Number(id));
-    if (t) {
-      setTicket(t);
-      setStatus(t.status);
-      setPriority(t.priority);
-      const count = allResponses.filter((r) => r.ticketId === t.id).length;
-      markSeen(t.id, count);
-    }
-  }, [id, getTicketById, allResponses, markSeen]);
+    fetchTicketDetail(Number(id)).then((data) => {
+      if (data) {
+        setTicket(data.ticket);
+        setStatus(data.ticket.status);
+        setPriority(data.ticket.priority);
+        markSeen(data.ticket.id, data.responses.length);
+      }
+    });
+  }, [id, fetchTicketDetail, markSeen]);
 
-  const refreshTicket = () => {
-    const t = getTicketById(Number(id));
-    if (t) {
-      setTicket({ ...t });
-      setStatus(t.status);
-      setPriority(t.priority);
+  const refreshTicket = async () => {
+    const data = await fetchTicketDetail(Number(id));
+    if (data) {
+      setTicket(data.ticket);
+      setStatus(data.ticket.status);
+      setPriority(data.ticket.priority);
     }
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (!ticket) return;
-    updateTicket(ticket.id, { status, priority });
+    await updateTicket(ticket.id, { status, priority });
     toast.success('Ticket updated');
-    refreshTicket();
+    await refreshTicket();
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (!ticket) return;
-    updateTicket(ticket.id, { status: 'resolved' });
+    await resolveTicket(ticket.id);
     toast.success('Ticket resolved');
-    refreshTicket();
+    await refreshTicket();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!ticket) return;
-    deleteTicket(ticket.id);
+    await deleteTicket(ticket.id);
     toast.success('Ticket deleted');
     navigate('/admin');
   };

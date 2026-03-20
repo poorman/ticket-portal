@@ -4,25 +4,70 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Crane Network Support Portal — a ticket management system built as a client-side SPA. React 18, Vite 6, TypeScript, TailwindCSS 3.4, Zustand for state management with localStorage persistence. No backend or database — all data lives in the browser.
+Crane Network Support Portal — a ticket management system with a React SPA frontend and Express.js + SQLite backend. React 18, Vite 6, TypeScript, TailwindCSS 3.4, Zustand for state management. Backend uses Express.js with better-sqlite3 for persistent storage. JWT authentication.
 
 ## Commands
 
-- **Dev server**: `npm run dev` (Vite dev server, default port 5173)
+### Frontend
+- **Dev server**: `npm run dev` (Vite dev server, port 5173, proxies /api to localhost:3001)
 - **Build**: `npm run build` (runs `tsc -b && vite build`, outputs to `dist/`)
 - **Preview**: `npm run preview` (serve production build locally)
 - **Lint**: `npm run lint` (ESLint)
 
+### Backend
+- **Dev server**: `cd server && node --watch index.js` (Express API on port 3001)
+- **Start**: `cd server && node index.js`
+
+### Docker
+- **Build & run**: `docker compose up -d --build`
+- **Rebuild**: `docker compose up -d --build --remove-orphans`
+- **Logs**: `docker logs ticket-portal-api-1` / `docker logs ticket-portal-frontend-1`
+
 ## Architecture
 
+### Backend (Express.js + SQLite)
+- `server/index.js` — Express app entry point
+- `server/db.js` — SQLite connection, schema, seed data, row-to-object converters
+- `server/auth.js` — JWT middleware (signToken, optionalAuth, requireAuth, requireAdmin)
+- `server/routes/auth.js` — Login, register, profile endpoints
+- `server/routes/users.js` — Admin user CRUD
+- `server/routes/tickets.js` — Ticket CRUD, responses, search
+- `server/routes/notifications.js` — Notification management
+
 ### Auth
-Client-side auth via Zustand `authStore`. Users stored in localStorage. Passwords use base64 encoding (demo only). Default admin: `admin@widesurf.com` / `admin123`. Route protection via `useRequireAuth` hook.
+JWT-based auth. Passwords hashed with bcrypt. Token stored in localStorage as `auth-token`. Default admin: `admin@widesurf.com` / `admin123`.
+
+### API Endpoints
+- `POST /api/auth/login` — Login, returns JWT + user
+- `POST /api/auth/register` — Register new user
+- `GET /api/auth/me` — Validate token, get current user
+- `PUT /api/auth/profile` — Update own profile
+- `GET /api/users` — List users (auth required)
+- `POST /api/users` — Create user (admin)
+- `PUT /api/users/:id` — Update user (admin)
+- `DELETE /api/users/:id` — Delete user (admin)
+- `POST /api/users/:id/suspend` — Toggle suspend (admin)
+- `GET /api/tickets` — List tickets
+- `POST /api/tickets` — Create ticket
+- `GET /api/tickets/:id` — Get ticket with responses
+- `PUT /api/tickets/:id` — Update ticket (admin)
+- `DELETE /api/tickets/:id` — Delete ticket (admin)
+- `POST /api/tickets/:id/resolve` — Resolve ticket
+- `POST /api/tickets/:id/responses` — Add response
+- `DELETE /api/tickets/responses/:id` — Delete response (admin)
+- `GET /api/tickets/search?q=` — Deep search
+- `GET /api/tickets/by-number/:num` — Lookup by ticket number
+- `GET /api/notifications` — Get notifications
+- `POST /api/notifications/:id/read` — Mark read
+- `POST /api/notifications/read-all` — Mark all read
 
 ### State Management (Zustand)
-Three stores in `src/store/`:
-- **authStore** — users, session, login/register/logout. Persisted to `ticket-portal-auth`.
-- **ticketStore** — tickets, responses, full CRUD. Persisted to `ticket-portal-tickets`.
-- **uiStore** — search/sort/filter state. Not persisted.
+Four stores in `src/store/`:
+- **authStore** — users, session, async login/register/logout via API. Has `initialize()` for token validation on app start.
+- **ticketStore** — tickets, responses, async CRUD via API. Has `fetchTickets()` and `fetchTicketDetail()`.
+- **notificationStore** — notifications via API. Has `fetchNotifications()`.
+- **uiStore** — search/sort/filter state. Client-side only, not persisted.
+- **readStore** — per-ticket read tracking. Client-side localStorage only.
 
 ### Data Model
 Defined in `src/types/index.ts`:
@@ -30,14 +75,11 @@ Defined in `src/types/index.ts`:
 - **Ticket** — unique `ticketNumber` (TKT-XXXX format), enums for type/status/priority, image attachments as base64
 - **TicketResponse** — belongs to ticket, optional user, `isInternal` flag for admin-only notes
 
-### Key Libraries
-- `src/lib/auth-utils.ts` — Password encoding helpers
+### Frontend Libraries
+- `src/lib/api.ts` — Fetch wrapper with JWT auth headers
 - `src/lib/ticket-utils.ts` — Display helpers, date formatting
 - `src/hooks/useAuth.ts` — Convenience auth hook
 - `src/hooks/useRequireAuth.ts` — Route guard hook
-
-### Path Alias
-`@/*` maps to `./src/*` (configured in `tsconfig.json` and `vite.config.ts`).
 
 ### UI
 Dark glassmorphism design with TailwindCSS. Custom component classes (`.btn`, `.card`, `.input`, etc.) in `src/index.css` via `@layer components`. Crane Network branding with gold/brown palette. Uses lucide-react icons, framer-motion animations, recharts for charts, canvas-confetti for effects, react-hot-toast for notifications.
@@ -56,9 +98,9 @@ Dark glassmorphism design with TailwindCSS. Custom component classes (`.btn`, `.
 
 ### Component Structure
 - `src/components/layout/` — Navbar, Footer, PageLayout, AnimatedPage
-- `src/components/ui/` — Badges, StatCard, SearchInput, ConfirmDialog, ImageUpload, ImageGallery, EmptyState
+- `src/components/ui/` — Badges, StatCard, SearchInput, ConfirmDialog, ImageUpload, ImageGallery, EmptyState, NotificationPanel
 - `src/components/tickets/` — TicketForm, TicketTable, TicketCard, TicketList, TicketDetails, ResponseForm, ResponseTimeline
 - `src/components/charts/` — StatusPieChart, TicketsOverTimeChart
 
 ### Deployment
-Static SPA served by nginx in Docker. Multi-stage build: Node (build) → nginx (serve). Config files: `Dockerfile`, `docker-compose.yml`, `nginx.conf`, `.dockerignore`. SPA fallback via `try_files $uri /index.html`.
+Two Docker containers: nginx (frontend) and Node.js (API). nginx proxies `/api/` to the backend. SQLite database persisted via Docker volume `db-data`. Config files: `Dockerfile`, `server/Dockerfile`, `docker-compose.yml`, `nginx.conf`.

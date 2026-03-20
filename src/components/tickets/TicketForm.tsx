@@ -43,7 +43,7 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
     priority: 'medium' as TicketPriority,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.subject.length < 5) {
       toast.error('Subject must be at least 5 characters');
@@ -65,7 +65,7 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
         : isLoggedIn
           ? { ...form, submitterName: user!.name, submitterEmail: user!.email, submitterPhone: user!.phone || form.submitterPhone }
           : form;
-      const ticket = createTicket({
+      const ticket = await createTicket({
         ...submitData,
         userId: submitAsUser ? submitAsUser.id : (isLoggedIn && linkToAccount ? user!.id : undefined),
         assignedTo: assignedTo.filter((u) => u && validUsernames.has(u)),

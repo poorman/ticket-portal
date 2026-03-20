@@ -17,17 +17,20 @@ export default function LoginPage() {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const user = login(identifier, password);
-    setLoading(false);
+    try {
+      const user = await login(identifier, password);
 
-    if (user) {
-      toast.success(`Welcome back, ${user.name}!`);
-      navigate(user.role === 'admin' ? '/admin' : '/dashboard');
-    } else {
-      toast.error('Invalid username/email or password');
+      if (user) {
+        toast.success(`Welcome back, ${user.name}!`);
+        navigate(user.role === 'admin' ? '/admin' : '/dashboard');
+      } else {
+        toast.error('Invalid username/email or password');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 

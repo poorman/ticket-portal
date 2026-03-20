@@ -16,10 +16,9 @@ export default function TicketDetailPage() {
   const [searchParams] = useSearchParams();
   const fromSearch = searchParams.get('from') === 'search';
   const { user, isAdmin } = useAuth();
-  const tickets = useTicketStore((s) => s.tickets);
   const responses = useTicketStore((s) => s.responses);
-  const getById = useTicketStore((s) => s.getTicketById);
-  const updateTicket = useTicketStore((s) => s.updateTicket);
+  const fetchTicketDetail = useTicketStore((s) => s.fetchTicketDetail);
+  const resolveTicket = useTicketStore((s) => s.resolveTicket);
   const markSeen = useReadStore((s) => s.markSeen);
   const [ticket, setTicket] = useState<Ticket | undefined>(undefined);
   const [verified, setVerified] = useState(false);
@@ -28,18 +27,19 @@ export default function TicketDetailPage() {
   const [showVerify, setShowVerify] = useState(false);
 
   useEffect(() => {
-    const t = getById(Number(id));
-    setTicket(t);
-    setLoaded(true);
-    if (t && user) {
-      const hasAccess = isAdmin || user.id === t.userId || user.email === t.submitterEmail;
-      setVerified(hasAccess);
-    }
-    if (t) {
-      const count = responses.filter((r) => r.ticketId === t.id).length;
-      markSeen(t.id, count);
-    }
-  }, [id, tickets, responses, getById, user, isAdmin, markSeen]);
+    const numId = Number(id);
+    fetchTicketDetail(numId).then((data) => {
+      if (data) {
+        setTicket(data.ticket);
+        if (user) {
+          const hasAccess = isAdmin || user.id === data.ticket.userId || user.email === data.ticket.submitterEmail;
+          setVerified(hasAccess);
+        }
+        markSeen(data.ticket.id, data.responses.length);
+      }
+      setLoaded(true);
+    });
+  }, [id, fetchTicketDetail, user, isAdmin, markSeen]);
 
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,9 +87,11 @@ export default function TicketDetailPage() {
   const isAssigned = user ? assigned.includes(String(user.id)) || assigned.includes(user.username ?? '') || assigned.includes(user.name) : false;
   const canResolve = (isSubmitter || isAssigned) && ticketResponses.length > 0 && ticket.status !== 'resolved';
 
-  const handleResolve = () => {
-    updateTicket(ticket.id, { status: 'resolved' });
-    setTicket({ ...getById(ticket.id)!, status: 'resolved' });
+  const handleResolve = async () => {
+    const resolved = await resolveTicket(ticket.id);
+    if (resolved) {
+      setTicket(resolved);
+    }
     toast.success('Ticket resolved!');
     confetti({
       particleCount: 120,
@@ -178,7 +180,11 @@ export default function TicketDetailPage() {
             <ResponseForm
               ticketId={ticket.id}
               submitterEmail={user?.email || email}
-              onSuccess={() => setTicket({ ...getById(Number(id))! })}
+              onSuccess={() => {
+                fetchTicketDetail(Number(id)).then((data) => {
+                  if (data) setTicket(data.ticket);
+                });
+              }}
             />
           </div>
         )}

@@ -25,7 +25,7 @@ export default function ProfilePage() {
     if (e.target === e.currentTarget) close();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password && password !== confirmPassword) {
@@ -49,7 +49,7 @@ export default function ProfilePage() {
       return;
     }
 
-    const result = updateProfile(updates);
+    const result = await updateProfile(updates);
     if (result.error) {
       toast.error(result.error);
     } else {

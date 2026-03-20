@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
@@ -15,8 +16,28 @@ import AdminUsersPage from './pages/AdminUsersPage';
 import SearchPage from './pages/SearchPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
+import { useAuthStore } from './store/authStore';
+import { useTicketStore } from './store/ticketStore';
 
 export default function App() {
+  const initialized = useAuthStore((s) => s.initialized);
+  const initialize = useAuthStore((s) => s.initialize);
+  const fetchTickets = useTicketStore((s) => s.fetchTickets);
+
+  useEffect(() => {
+    initialize().then(() => {
+      fetchTickets();
+    });
+  }, [initialize, fetchTickets]);
+
+  if (!initialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f]">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Toaster

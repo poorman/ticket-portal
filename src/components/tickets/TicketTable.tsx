@@ -20,13 +20,13 @@ interface TicketTableProps {
 
 export default function TicketTable({ tickets, linkPrefix = '/tickets' }: TicketTableProps) {
   const { sortField, sortOrder, setSortField } = useUIStore();
-  const responses = useTicketStore((s) => s.responses);
+  const responseCounts = useTicketStore((s) => s.responseCounts);
   const seenCounts = useReadStore((s) => s.seenCounts);
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
 
   const getResponseCount = (ticketId: number) =>
-    responses.filter((r) => r.ticketId === ticketId).length;
+    responseCounts[ticketId] ?? 0;
 
   const hasNewResponses = (ticketId: number): boolean => {
     const currentCount = getResponseCount(ticketId);
@@ -34,18 +34,12 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
     return currentCount > seen;
   };
 
-  const getLastResponseDate = (ticketId: number): string => {
-    const ticketResponses = responses.filter((r) => r.ticketId === ticketId);
-    if (ticketResponses.length === 0) return '';
-    return ticketResponses.reduce((latest, r) => r.createdAt > latest ? r.createdAt : latest, '');
-  };
-
   const sorted = [...tickets].sort((a, b) => {
     let aVal: string;
     let bVal: string;
     if (sortField === 'lastResponse') {
-      aVal = getLastResponseDate(a.id) || a.updatedAt;
-      bVal = getLastResponseDate(b.id) || b.updatedAt;
+      aVal = a.updatedAt;
+      bVal = b.updatedAt;
     } else {
       aVal = String(a[sortField as keyof Ticket] ?? '');
       bVal = String(b[sortField as keyof Ticket] ?? '');

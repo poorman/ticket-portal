@@ -12,80 +12,128 @@ Single file defining all shared TypeScript interfaces and union types.
 |---------------------|-----------|--------------------------------------------------|
 | `UserRole`          | Type      | `'user' \| 'admin'`                              |
 | `TicketType`        | Type      | `'support' \| 'bug' \| 'feature_request' \| 'general'` |
-| `TicketStatus`      | Type      | `'open' \| 'in_progress' \| 'waiting_response' \| 'resolved' \| 'closed'` |
+| `TicketStatus`      | Type      | `'open' \| 'in_progress' \| 'waiting_response' \| 'resolved'` |
 | `TicketPriority`    | Type      | `'low' \| 'medium' \| 'high'`                    |
-| `User`              | Interface | User record with id, email, password, name, role |
-| `Ticket`            | Interface | Full ticket with metadata, submitter info, images |
+| `User`              | Interface | User record with id, username, email, password, name, role |
+| `Ticket`            | Interface | Full ticket with metadata, submitter info, assignees, images |
 | `TicketResponse`    | Interface | Response/comment on a ticket                     |
 | `CreateTicketInput` | Interface | Input shape for creating a ticket                |
 | `CreateResponseInput` | Interface | Input shape for adding a response              |
 
 ---
 
-## Stores (`src/store/`)
+## Backend (`server/`)
 
-### `authStore.ts`
-Zustand store persisted to `localStorage` key `ticket-portal-auth`.
+### `index.js`
+Express application entry point. Configures CORS, JSON body parsing (50MB limit), mounts all route modules, starts HTTP server.
 
-| Member         | Type     | Description                                         |
-|----------------|----------|-----------------------------------------------------|
-| `users`        | State    | Array of all registered `User` records              |
-| `currentUser`  | State    | Currently logged-in user, or `null`                 |
-| `nextUserId`   | State    | Auto-increment counter for user IDs                 |
-| `login()`      | Action   | Find user by email, verify password, set session    |
-| `logout()`     | Action   | Clear `currentUser`                                 |
-| `register()`   | Action   | Create new user, return `{ user }` or `{ error }`   |
-| `isAdmin()`    | Getter   | Returns `true` if current user has admin role       |
-| `getUserById()`| Getter   | Look up user by numeric ID                          |
+### `db.js`
+SQLite database connection and schema management.
 
-Seeds a default admin user (`admin@widesurf.com` / `admin123`) in initial state.
+| Export           | Description                                      |
+|------------------|--------------------------------------------------|
+| `db`             | better-sqlite3 database instance                 |
+| `toTicket()`     | Convert DB row (snake_case) to Ticket object     |
+| `toResponse()`   | Convert DB row to TicketResponse object           |
+| `toUser()`       | Convert DB row to User object (optional password) |
+| `toNotification()` | Convert DB row to Notification object           |
 
-### `ticketStore.ts`
-Zustand store persisted to `localStorage` key `ticket-portal-tickets`.
+Seeds default admin user on first run.
 
-| Member                   | Type   | Description                                           |
-|--------------------------|--------|-------------------------------------------------------|
-| `tickets`                | State  | Array of all `Ticket` records                         |
-| `responses`              | State  | Array of all `TicketResponse` records                 |
-| `nextTicketId`           | State  | Auto-increment for ticket IDs                         |
-| `nextTicketNumber`       | State  | Counter for `TKT-XXXX` generation (starts at 1001)   |
-| `nextResponseId`         | State  | Auto-increment for response IDs                       |
-| `createTicket()`         | Action | Create ticket, assign number, prepend to list         |
-| `getTicketById()`        | Getter | Look up ticket by numeric ID                          |
-| `getTicketByNumber()`    | Getter | Look up ticket by `TKT-XXXX` string (case-insensitive) |
-| `getTicketsForUser()`    | Getter | Filter tickets by userId OR submitterEmail match      |
-| `updateTicket()`         | Action | Patch status/priority, auto-set `closedAt` on close  |
-| `deleteTicket()`         | Action | Remove ticket and cascade-delete its responses        |
-| `searchTickets()`        | Getter | Full-text search across number, subject, description, email |
-| `addResponse()`          | Action | Append response, update ticket's `updatedAt`          |
-| `getResponsesForTicket()`| Getter | Filter responses by ticketId, optionally include internal |
+### `auth.js`
+JWT authentication middleware.
 
-### `uiStore.ts`
-Zustand store, **not persisted** (ephemeral UI state).
+| Export           | Description                                      |
+|------------------|--------------------------------------------------|
+| `signToken()`    | Create JWT for a user ID                         |
+| `optionalAuth`   | Middleware: sets `req.user` if valid token present |
+| `requireAuth`    | Middleware: returns 401 if not authenticated      |
+| `requireAdmin`   | Middleware: returns 403 if not admin              |
 
-| Member             | Type   | Description                                      |
-|--------------------|--------|--------------------------------------------------|
-| `searchQuery`      | State  | Current search input value                       |
-| `sortField`        | State  | Column key to sort by (default: `createdAt`)     |
-| `sortOrder`        | State  | `'asc'` or `'desc'` (default: `'desc'`)         |
-| `setSearchQuery()` | Action | Update search query                              |
-| `setSortField()`   | Action | Set sort field, toggle order if same field       |
-| `toggleSortOrder()`| Action | Flip between asc/desc                            |
+### Routes
+
+| File                    | Base Path           | Description                              |
+|-------------------------|---------------------|------------------------------------------|
+| `routes/auth.js`        | `/api/auth`         | Login, register, profile management      |
+| `routes/users.js`       | `/api/users`        | Admin user CRUD, suspend toggle          |
+| `routes/tickets.js`     | `/api/tickets`      | Ticket CRUD, responses, search, resolve  |
+| `routes/notifications.js` | `/api/notifications` | Notification list, mark read, clear    |
 
 ---
 
-## Libraries (`src/lib/`)
+## Frontend Stores (`src/store/`)
 
-### `auth-utils.ts`
-| Function           | Description                              |
-|--------------------|------------------------------------------|
-| `hashPassword()`   | Encodes password with `btoa()` (demo)    |
-| `verifyPassword()` | Compares password against stored hash    |
+### `authStore.ts`
+API-backed Zustand store for authentication.
+
+| Member            | Type     | Description                                         |
+|-------------------|----------|-----------------------------------------------------|
+| `users`           | State    | Cached array of all `User` records                  |
+| `currentUser`     | State    | Currently logged-in user, or `null`                 |
+| `initialized`     | State    | Whether auth token has been validated                |
+| `initialize()`    | Action   | Validate stored JWT, load user, fetch users list    |
+| `login()`         | Action   | Async POST to `/api/auth/login`, store JWT          |
+| `logout()`        | Action   | Clear JWT and user state                            |
+| `register()`      | Action   | Async POST to `/api/auth/register`                  |
+| `fetchUsers()`    | Action   | Load all users from API (for admin, @mentions)      |
+| `isAdmin()`       | Getter   | Returns `true` if current user has admin role       |
+| `getUserById()`   | Getter   | Look up user by ID from cached list                 |
+
+### `ticketStore.ts`
+API-backed Zustand store for tickets and responses.
+
+| Member                   | Type   | Description                                           |
+|--------------------------|--------|-------------------------------------------------------|
+| `tickets`                | State  | Array of `Ticket` records                             |
+| `responses`              | State  | Array of `TicketResponse` records (per-ticket loaded) |
+| `responseCounts`         | State  | Map of ticket ID to response count                    |
+| `loading`                | State  | Whether tickets are being fetched                     |
+| `fetchTickets()`         | Action | Load all tickets from API                             |
+| `fetchTicketDetail()`    | Action | Load single ticket with its responses                 |
+| `createTicket()`         | Action | Async POST to create ticket                           |
+| `updateTicket()`         | Action | Async PUT to update status/priority (admin)           |
+| `resolveTicket()`        | Action | Async POST to resolve ticket                          |
+| `deleteTicket()`         | Action | Async DELETE ticket (admin)                           |
+| `addResponse()`          | Action | Async POST to add response                            |
+| `deleteResponse()`       | Action | Async DELETE response (admin)                         |
+| `deepSearch()`           | Action | Async search via API                                  |
+| `getTicketByNumber()`    | Action | Async lookup by TKT-XXXX                             |
+
+### `notificationStore.ts`
+API-backed Zustand store for notifications.
+
+| Member               | Type   | Description                                      |
+|----------------------|--------|--------------------------------------------------|
+| `notifications`      | State  | Array of `Notification` records                  |
+| `fetchNotifications()` | Action | Load notifications from API                    |
+| `markRead()`         | Action | Mark single notification as read                 |
+| `markAllRead()`      | Action | Mark all as read                                 |
+| `clearAll()`         | Action | Delete all notifications                         |
+| `unreadCount()`      | Getter | Count of unread notifications                    |
+
+### `readStore.ts`
+Client-side only store (localStorage persisted) for tracking read/unread responses.
+
+### `uiStore.ts`
+Client-side only store (not persisted) for search/sort/filter UI state.
+
+---
+
+## Frontend Libraries (`src/lib/`)
+
+### `api.ts`
+| Export      | Description                                          |
+|-------------|------------------------------------------------------|
+| `api.get()` | GET request with JWT auth header                     |
+| `api.post()` | POST request with JSON body and auth header         |
+| `api.put()` | PUT request with JSON body and auth header           |
+| `api.delete()` | DELETE request with auth header                   |
+| `ApiError`  | Custom error class with HTTP status code             |
 
 ### `ticket-utils.ts`
 | Function               | Description                                      |
 |------------------------|--------------------------------------------------|
-| `getTicketTypeDisplay()` | Maps type enum to human label (e.g. `bug` -> `Bug Report`) |
+| `getTicketTypeDisplay()` | Maps type enum to human label                  |
 | `getStatusDisplay()`    | Maps status enum to human label                  |
 | `getPriorityDisplay()`  | Maps priority enum to human label                |
 | `formatDate()`          | Formats ISO string to `"Mar 5, 2026, 02:30 PM"` |
@@ -96,60 +144,53 @@ Zustand store, **not persisted** (ephemeral UI state).
 ## Hooks (`src/hooks/`)
 
 ### `useAuth.ts`
-Convenience hook that reads from `authStore` and returns `{ user, isLoggedIn, isAdmin, login, logout, register }`.
+Convenience hook returning `{ user, isLoggedIn, isAdmin, login, logout, register }`.
 
 ### `useRequireAuth.ts`
-Route guard hook. Accepts optional `adminOnly` boolean. Redirects to `/login` if not authenticated, or to `/dashboard` if authenticated but not admin when `adminOnly=true`. Returns the current user.
+Route guard hook. Redirects to `/login` if not authenticated, or to `/dashboard` if not admin.
 
 ---
 
-## Layout Components (`src/components/layout/`)
+## Components
 
+### Layout (`src/components/layout/`)
 | Component       | Description                                                   |
 |-----------------|---------------------------------------------------------------|
-| `Navbar`        | Sticky black top bar with Crane Network logo, nav links, auth state. Responsive with mobile hamburger menu. |
-| `Footer`        | Site footer with copyright and quick links. Shows "Create Account" link for unauthenticated users. |
-| `PageLayout`    | Wraps `<Outlet />` between Navbar and Footer. Used as the root route element. |
-| `AnimatedPage`  | Framer Motion wrapper applying fade + slide-up on mount/unmount. Every page is wrapped in this. |
+| `Navbar`        | Sticky black top bar with logo, nav links, auth state, notifications |
+| `Footer`        | Site footer with copyright and links                          |
+| `PageLayout`    | Wraps `<Outlet />` between Navbar and Footer                  |
+| `AnimatedPage`  | Framer Motion fade + slide-up wrapper for pages               |
 
----
+### UI (`src/components/ui/`)
+| Component           | Description                                       |
+|---------------------|---------------------------------------------------|
+| `StatusBadge`       | Color-coded pill for ticket status                |
+| `PriorityBadge`     | Color-coded pill for ticket priority              |
+| `TypeBadge`         | Purple pill for ticket type                       |
+| `StatCard`          | Dashboard metric card with number and icon        |
+| `SearchInput`       | Text input with search icon and clear button      |
+| `ConfirmDialog`     | Modal for destructive action confirmation         |
+| `ImageUpload`       | File picker with base64 conversion and previews   |
+| `ImageGallery`      | Thumbnail grid with lightbox                      |
+| `EmptyState`        | Centered placeholder for empty lists              |
+| `NotificationPanel` | Dropdown notification list with mark-read actions |
 
-## UI Components (`src/components/ui/`)
-
-| Component       | Props                          | Description                                       |
-|-----------------|--------------------------------|---------------------------------------------------|
-| `StatusBadge`   | `status: TicketStatus`         | Color-coded pill showing ticket status             |
-| `PriorityBadge` | `priority: TicketPriority`     | Color-coded pill showing ticket priority           |
-| `TypeBadge`     | `type: TicketType`             | Purple pill showing ticket type                    |
-| `StatCard`      | `label, value, icon, color?`   | Dashboard metric card with large number and icon   |
-| `SearchInput`   | `value, onChange, placeholder?` | Text input with search icon and clear button       |
-| `ConfirmDialog` | `open, title, message, onConfirm, onCancel` | Modal overlay for destructive action confirmation |
-| `ImageUpload`   | `images, onChange, maxImages?`  | File picker that converts images to base64 with preview thumbnails |
-| `ImageGallery`  | `images: string[]`             | Thumbnail grid with click-to-enlarge lightbox      |
-| `EmptyState`    | `icon?, title, description?, action?` | Centered placeholder for empty lists          |
-
----
-
-## Ticket Components (`src/components/tickets/`)
-
+### Tickets (`src/components/tickets/`)
 | Component          | Description                                                      |
 |--------------------|------------------------------------------------------------------|
-| `TicketForm`       | Full ticket creation form (type, subject, description, contact info, priority, images). Fires canvas-confetti on success. |
-| `TicketTable`      | Sortable HTML table with column headers linked to `uiStore`. Used on HomePage and AdminDashboardPage. |
-| `TicketCard`       | Compact card showing ticket number, status, priority, subject, date, response count. Links to detail page. |
-| `TicketList`       | Maps an array of tickets to animated `TicketCard` components. Shows `EmptyState` when empty. |
-| `TicketDetails`    | Full ticket view: header with badges, description, contact info, attachments gallery, response timeline. |
-| `ResponseForm`     | Textarea + image upload for adding responses. Admin users see an "Internal note" checkbox. |
-| `ResponseTimeline` | Chronological list of responses as styled message bubbles. Internal notes highlighted in amber. |
+| `TicketForm`       | Ticket creation form with type, priority, assignees, CC, images  |
+| `TicketTable`      | Sortable paginated table with response counts and NEW badges     |
+| `TicketCard`       | Compact card for mobile ticket list view                         |
+| `TicketList`       | Maps tickets to animated TicketCard components                   |
+| `TicketDetails`    | Full ticket view with header, description, contact, responses    |
+| `ResponseForm`     | Response textarea with @mention autocomplete and image upload    |
+| `ResponseTimeline` | Chronological responses with user popovers and admin delete      |
 
----
-
-## Chart Components (`src/components/charts/`)
-
-| Component              | Description                                                  |
-|------------------------|--------------------------------------------------------------|
-| `StatusPieChart`       | Recharts donut chart showing ticket count per status. Colors match `StatusBadge`. |
-| `TicketsOverTimeChart` | Recharts line chart showing daily ticket creation count over the last 30 days. Gold-colored line. |
+### Charts (`src/components/charts/`)
+| Component              | Description                                      |
+|------------------------|--------------------------------------------------|
+| `StatusPieChart`       | Donut chart showing ticket count per status      |
+| `TicketsOverTimeChart` | Line chart of daily ticket creation (30 days)    |
 
 ---
 
@@ -157,14 +198,14 @@ Route guard hook. Accepts optional `adminOnly` boolean. Redirects to `/login` if
 
 | Page                     | Route                  | Auth     | Description                                           |
 |--------------------------|------------------------|----------|-------------------------------------------------------|
-| `HomePage`               | `/`                    | Public   | Hero section, stat cards, searchable sortable ticket table |
-| `LoginPage`              | `/login`               | Public   | Email/password sign-in form                           |
-| `RegisterPage`           | `/register`            | Public   | Registration form (name, email, password)             |
-| `SubmitPage`             | `/submit`              | Public   | Ticket creation via `TicketForm`                      |
+| `HomePage`               | `/`                    | Public   | Hero section, stat cards, ticket table                |
+| `LoginPage`              | `/login`               | Public   | Email/password sign-in                                |
+| `RegisterPage`           | `/register`            | Public   | Registration form                                     |
+| `SubmitPage`             | `/submit`              | Public   | Ticket creation via TicketForm                        |
 | `TrackPage`              | `/track`               | Public   | Ticket lookup by number + email verification          |
-| `TicketDetailPage`       | `/tickets/:id`         | Email verify | Ticket details with email gate or session access   |
+| `TicketDetailPage`       | `/tickets/:id`         | Email    | Ticket details with email gate or session access      |
 | `DashboardPage`          | `/dashboard`           | User     | Personal ticket overview with stats                   |
-| `AdminDashboardPage`     | `/admin`               | Admin    | All tickets overview with charts and priority alerts  |
-| `AdminTicketDetailPage`  | `/admin/tickets/:id`   | Admin    | Full ticket management (status, priority, delete, internal notes) |
+| `AdminDashboardPage`     | `/admin`               | Admin    | All tickets with charts and priority alerts           |
+| `AdminTicketDetailPage`  | `/admin/tickets/:id`   | Admin    | Full ticket management                                |
 | `SearchPage`             | `/search`              | Public   | Knowledge base search with filtered results           |
 | `NotFoundPage`           | `*`                    | Public   | 404 page                                             |

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Search, Ticket, Clock, CheckCircle, AlertCircle } from 'lucide-react';
@@ -12,7 +12,12 @@ import { useUIStore } from '../store/uiStore';
 export default function HomePage() {
   const tickets = useTicketStore((s) => s.tickets);
   const searchTickets = useTicketStore((s) => s.searchTickets);
+  const fetchTickets = useTicketStore((s) => s.fetchTickets);
   const { searchQuery, setSearchQuery } = useUIStore();
+
+  useEffect(() => {
+    fetchTickets();
+  }, [fetchTickets]);
 
   const filteredTickets = useMemo(
     () => (searchQuery ? searchTickets(searchQuery) : tickets),

@@ -11,7 +11,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.password.length < 6) {
       toast.error('Password must be at least 6 characters');
@@ -23,14 +23,17 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
-    const result = register(form.name, form.email, form.password);
-    setLoading(false);
+    try {
+      const result = await register(form.name, form.email, form.password);
 
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success('Account created! Please log in.');
-      navigate('/login');
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success('Account created! Please log in.');
+        navigate('/login');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 

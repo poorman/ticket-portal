@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Ticket, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import AnimatedPage from '../components/layout/AnimatedPage';
@@ -12,6 +12,11 @@ import { useTicketStore } from '../store/ticketStore';
 export default function DashboardPage() {
   const user = useRequireAuth();
   const getTicketsForUser = useTicketStore((s) => s.getTicketsForUser);
+  const fetchTickets = useTicketStore((s) => s.fetchTickets);
+
+  useEffect(() => {
+    fetchTickets();
+  }, [fetchTickets]);
 
   const tickets = useMemo(
     () => (user ? getTicketsForUser(user.id, user.email) : []),

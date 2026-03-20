@@ -1,61 +1,53 @@
 # Roadmap
 
-Items completed during the rewrite and potential future enhancements.
+Items completed and potential future enhancements.
 
 ---
 
-## Completed (Rewrite)
+## Completed
 
-These items were completed as part of the Next.js-to-Vite migration:
-
-- [x] **Production build verification** -- `npm run build` and `npm run preview` confirmed working
-- [x] **Dev server smoke test** -- All 10 routes tested and functional
-- [x] **Docker deployment files** -- `nginx.conf`, `Dockerfile` (multi-stage node build + nginx), `docker-compose.yml`, `.dockerignore` created
-- [x] **Clean up legacy files** -- Removed leftover `.env`, `.env.development`, `.env.example` files
-- [x] **Update .gitignore** -- Covers `dist/`, `node_modules/`, `.env` for Vite project
-- [x] **Update CLAUDE.md** -- Reflects the new tech stack and commands
-- [x] **Dark glassmorphism redesign** -- Full visual overhaul with dark theme and glass-effect UI
-- [x] **Knowledge Base search page** -- Added SearchPage at `/search`
+- [x] **React + Vite SPA rewrite** — Migrated from Next.js to React 18 + Vite 6
+- [x] **Dark glassmorphism redesign** — Full visual overhaul with dark theme and glass-effect UI
+- [x] **Knowledge Base search page** — SearchPage at `/search` with deep search
+- [x] **Docker deployment** — nginx + Docker multi-stage build
+- [x] **Admin features** — Respond as user, submit as user, delete responses, user management panel
+- [x] **@mention system** — @mention detection with autocomplete dropdown, email notification toasts, gold highlighting
+- [x] **Ticket assignment** — Assigned To and CC fields with user picker dropdowns
+- [x] **Notification center** — In-app notifications with bell icon and unread count
+- [x] **Pagination** — Page-based pagination (10 per page) on ticket tables
+- [x] **Unread tracking** — Gold "NEW" badge on tickets with unseen responses
+- [x] **Resolve workflow** — "Resolve It" button for submitters/assignees with confetti animation
+- [x] **Response highlighting** — Ticket creator responses subtly highlighted
+- [x] **User popover** — Click user names in responses to see user details
+- [x] **Backend API** — Express.js + SQLite backend with JWT authentication
+- [x] **Database persistence** — All data stored in SQLite, shared across devices/browsers
+- [x] **Real authentication** — bcrypt password hashing, JWT tokens
+- [x] **Docker multi-service** — Separate frontend (nginx) and API (Node.js) containers
 
 ---
 
 ## Short-Term Enhancements
 
-- [ ] **Seed sample data** -- Create a `src/lib/seed.ts` that populates 5-10 demo tickets on first load so the app doesn't start empty
-- [x] **Responsive polish** -- Mobile card view for TicketTable, admin sidebar reordered first on mobile, flex-wrap on badges/timestamps, responsive thumbnails and stat cards
-- [ ] **Accessibility** -- Add ARIA labels to interactive elements, ensure keyboard navigation works, check color contrast ratios
-- [ ] **Error boundary** -- Add a React error boundary component wrapping `<Outlet />` for graceful crash recovery
-- [ ] **Loading states** -- Add skeleton/shimmer placeholders during store rehydration
+- [ ] **Seed sample data** — Create a seed script that populates demo tickets so the app doesn't start empty
+- [ ] **Accessibility** — Add ARIA labels, keyboard navigation, color contrast audit
+- [ ] **Error boundary** — React error boundary for graceful crash recovery
+- [ ] **Loading skeletons** — Skeleton placeholders during API data fetching
 
 ---
 
 ## Medium-Term Features
 
-- [ ] **Assignee system** -- Add an `assignedTo` field on tickets, implement the AssignFilter dropdown that currently exists as a placeholder
-- [ ] **Ticket filtering** -- Filter by status, priority, type, and date range on HomePage and AdminDashboardPage
-- [x] **Pagination** -- Page-based pagination (10 per page) on TicketTable for both mobile cards and desktop table views
-- [x] **Notification center** -- In-app notification panel in Navbar with bell icon, unread badge, mark-read/clear; fires on ticket create, update, response, and close via `notificationStore`
-- [ ] **Export/Import** -- JSON export of all localStorage data for backup; import to restore state
+- [ ] **Ticket filtering** — Filter by status, priority, type, and date range
+- [ ] **Export/Import** — JSON/CSV export of tickets for backup and reporting
+- [ ] **Email notifications** — Nodemailer integration for real email delivery on ticket events
+- [ ] **File storage** — Move image uploads from base64 in DB to file-based storage (multer + disk/S3)
 
 ---
 
-## Long-Term / Backend Migration
+## Long-Term
 
-If the app needs to support real multi-user workflows:
-
-- [ ] **Backend API** -- Add an Express/Fastify backend with the same REST endpoints the old Next.js app had
-- [ ] **Database** -- Restore PostgreSQL + Prisma for persistent multi-user storage
-- [ ] **Real authentication** -- Replace btoa/atob with bcrypt password hashing and JWT tokens
-- [ ] **Email notifications** -- Restore Nodemailer integration for ticket creation and update emails
-- [ ] **File storage** -- Move image uploads from base64 localStorage to S3/local disk with URL references
-- [ ] **WebSocket updates** -- Real-time ticket updates for admin users
-- [ ] **Audit log** -- Track all ticket state changes with timestamps and actor information
-
----
-
-## Performance
-
-- [ ] **Code splitting** -- Lazy-load page components with `React.lazy()` + `Suspense` to reduce initial bundle size
-- [ ] **localStorage limits** -- Add storage quota monitoring and warn users when approaching the ~5MB browser limit
-- [x] **Image compression** -- Canvas-based compression: resizes to max 1920px, JPEG at 80% quality; shows spinner during compress; 10MB raw upload limit
-- [ ] **Memoization audit** -- Review `useMemo` usage in pages to prevent unnecessary re-renders on large datasets
+- [ ] **WebSocket updates** — Real-time ticket updates for admin users
+- [ ] **Audit log** — Track all ticket state changes with timestamps and actor info
+- [ ] **Full-text search** — SQLite FTS5 for faster and more accurate search results
+- [ ] **Code splitting** — Lazy-load page components with `React.lazy()` + `Suspense`
+- [ ] **Role-based permissions** — More granular roles beyond user/admin

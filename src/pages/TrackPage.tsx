@@ -22,14 +22,14 @@ export default function TrackPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSearch = (e?: React.FormEvent) => {
+  const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!ticketNumber.trim() || !email.trim()) {
       toast.error('Please enter ticket number and email');
       return;
     }
 
-    const found = getByNumber(ticketNumber.trim());
+    const found = await getByNumber(ticketNumber.trim());
     setSearched(true);
 
     if (found && found.submitterEmail.toLowerCase() === email.toLowerCase()) {
@@ -84,8 +84,8 @@ export default function TrackPage() {
               <ResponseForm
                 ticketId={ticket.id}
                 submitterEmail={email}
-                onSuccess={() => {
-                  const refreshed = getByNumber(ticketNumber.trim());
+                onSuccess={async () => {
+                  const refreshed = await getByNumber(ticketNumber.trim());
                   if (refreshed) setTicket({ ...refreshed });
                 }}
               />

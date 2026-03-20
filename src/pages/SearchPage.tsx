@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, BookOpen, CheckCircle, MessageSquare, FileText, Hash, Filter } from 'lucide-react';
@@ -15,16 +15,25 @@ export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('');
   const [typeFilter, setTypeFilter] = useState<TicketType | ''>('');
+  const [results, setResults] = useState<SearchResult[]>([]);
   const deepSearch = useTicketStore((s) => s.deepSearch);
   const tickets = useTicketStore((s) => s.tickets);
   const responses = useTicketStore((s) => s.responses);
 
-  const results = useMemo(() => {
-    let res = query.trim().length >= 2 ? deepSearch(query) : [];
+  const performSearch = useCallback(async () => {
+    if (query.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    let res = await deepSearch(query);
     if (statusFilter) res = res.filter((r) => r.ticket.status === statusFilter);
     if (typeFilter) res = res.filter((r) => r.ticket.type === typeFilter);
-    return res;
+    setResults(res);
   }, [query, statusFilter, typeFilter, deepSearch]);
+
+  useEffect(() => {
+    performSearch();
+  }, [performSearch]);
 
   const resolvedCount = tickets.filter((t) => t.status === 'resolved').length;
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -41,11 +41,18 @@ const emptyForm: UserFormData = { name: '', username: '', email: '', password: '
 export default function AdminUsersPage() {
   const currentUser = useRequireAuth(true);
   const users = useAuthStore((s) => s.users);
+  const fetchUsers = useAuthStore((s) => s.fetchUsers);
   const adminCreateUser = useAuthStore((s) => s.adminCreateUser);
   const adminUpdateUser = useAuthStore((s) => s.adminUpdateUser);
   const adminDeleteUser = useAuthStore((s) => s.adminDeleteUser);
   const adminToggleSuspend = useAuthStore((s) => s.adminToggleSuspend);
   const tickets = useTicketStore((s) => s.tickets);
+  const fetchTickets = useTicketStore((s) => s.fetchTickets);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchTickets();
+  }, [fetchUsers, fetchTickets]);
 
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
@@ -102,13 +109,13 @@ export default function AdminUsersPage() {
     setForm(emptyForm);
   };
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.password) {
       toast.error('Name, email, and password are required');
       return;
     }
-    const result = adminCreateUser({
+    const result = await adminCreateUser({
       name: form.name,
       email: form.email,
       password: form.password,
@@ -124,7 +131,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleUpdate = (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId === null) return;
     const updates: Record<string, string | undefined> = {};
@@ -135,7 +142,7 @@ export default function AdminUsersPage() {
     if (form.phone !== undefined) updates.phone = form.phone;
     updates.role = form.role;
 
-    const result = adminUpdateUser(editingId, updates as any);
+    const result = await adminUpdateUser(editingId, updates as any);
     if (result.error) {
       toast.error(result.error);
     } else {
@@ -145,9 +152,9 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteId === null) return;
-    const result = adminDeleteUser(deleteId);
+    const result = await adminDeleteUser(deleteId);
     if (result.error) {
       toast.error(result.error);
     } else {
@@ -156,8 +163,8 @@ export default function AdminUsersPage() {
     setDeleteId(null);
   };
 
-  const handleToggleSuspend = (user: User) => {
-    const result = adminToggleSuspend(user.id);
+  const handleToggleSuspend = async (user: User) => {
+    const result = await adminToggleSuspend(user.id);
     if (result.error) {
       toast.error(result.error);
     } else {

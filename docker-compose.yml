@@ -1,6 +1,25 @@
 services:
-  app:
-    build: .
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3014:80"
+    depends_on:
+      - api
     restart: unless-stopped
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    volumes:
+      - db-data:/app/data
+    environment:
+      - JWT_SECRET=crane-network-portal-jwt-secret-2026
+      - DB_PATH=/app/data/portal.db
+      - PORT=3001
+    restart: unless-stopped
+
+volumes:
+  db-data:
