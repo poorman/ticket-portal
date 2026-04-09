@@ -6,7 +6,9 @@
 
 @layer base {
   body {
-    @apply bg-[#0f0f11] text-gray-100 font-sans antialiased m-0;
+    background: linear-gradient(135deg, #161419 0%, #161519 25%, #141317 50%, #161419 75%, #121114 100%);
+    background-attachment: fixed;
+    @apply text-gray-100 font-sans antialiased m-0 min-h-screen;
   }
 }
 
@@ -93,8 +95,7 @@
 
   .hero-gradient {
     background: radial-gradient(ellipse at 50% -20%, rgba(212,165,116,0.15) 0%, transparent 70%),
-                radial-gradient(ellipse at 80% 50%, rgba(212,165,116,0.08) 0%, transparent 50%),
-                linear-gradient(180deg, #141416 0%, #0f0f11 100%);
+                radial-gradient(ellipse at 80% 50%, rgba(212,165,116,0.08) 0%, transparent 50%);
   }
 
   .badge {

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Lock, Save, X } from 'lucide-react';
+import { User, Mail, Phone, Lock, Save, X, Camera } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useRequireAuth } from '../hooks/useRequireAuth';
@@ -9,7 +9,9 @@ import { useAuthStore } from '../store/authStore';
 export default function ProfilePage() {
   const user = useRequireAuth();
   const updateProfile = useAuthStore((s) => s.updateProfile);
+  const updateAvatar = useAuthStore((s) => s.updateAvatar);
   const navigate = useNavigate();
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -78,6 +80,51 @@ export default function ProfilePage() {
         </button>
 
         <h2 className="text-lg font-bold text-white mb-5">Profile</h2>
+
+        {/* Avatar upload */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="relative group">
+            <div className="w-16 h-16 rounded-full bg-white/[0.06] border border-white/[0.1] flex items-center justify-center overflow-hidden">
+              {user.avatar ? (
+                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <User size={28} className="text-gray-400" />
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
+            >
+              <Camera size={18} className="text-white" />
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 2 * 1024 * 1024) { toast.error('Image must be under 2MB'); return; }
+                const reader = new FileReader();
+                reader.onload = async () => {
+                  const result = await updateAvatar(reader.result as string);
+                  if (result.error) toast.error(result.error);
+                  else toast.success('Avatar updated');
+                };
+                reader.readAsDataURL(file);
+              }}
+            />
+          </div>
+          <div>
+            <p className="text-sm text-white font-medium">{user.name}</p>
+            <p className="text-xs text-gray-500">@{user.username}</p>
+            <button type="button" onClick={() => fileRef.current?.click()} className="text-xs text-crane hover:text-crane-light mt-1 cursor-pointer">
+              Upload photo
+            </button>
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>

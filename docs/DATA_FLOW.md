@@ -7,14 +7,24 @@ How data moves through the application, from user interaction to persistence.
 ## Storage Architecture
 
 ```
-Browser localStorage
-  |
-  +-- "ticket-portal-auth"     (JSON: users[], currentUser, nextUserId)
-  |
-  +-- "ticket-portal-tickets"  (JSON: tickets[], responses[], counters)
+Browser                              Server
+  |                                    |
+  +-- localStorage                     +-- SQLite (portal.db)
+  |     +-- "auth-token" (JWT)         |     +-- users table
+  |     +-- "track-email"              |     +-- tickets table
+  |     +-- readStore (per-ticket)     |     +-- responses table
+  |                                    |     +-- notifications table
+  |                                    |     +-- ticket_activity table
+  |                                    |
+  +-- Zustand stores (in-memory)       +-- Docker volume: db-data
+        +-- authStore                        (persists across rebuilds)
+        +-- ticketStore
+        +-- notificationStore
+        +-- readStore (localStorage)
+        +-- uiStore (ephemeral)
 ```
 
-Zustand's `persist` middleware automatically serializes store state to localStorage on every mutation and rehydrates on page load.
+Zustand stores fetch data from the API on mount and cache in memory. The SQLite database is the single source of truth.
 
 ---
 
@@ -29,82 +39,72 @@ User fills TicketForm
 Form validation (subject >= 5 chars, description >= 10 chars, valid email)
   |
   v
-ticketStore.createTicket(data)
-  |
-  +-- Generate ticketNumber: "TKT-{nextTicketNumber}"
-  +-- Increment nextTicketId, nextTicketNumber
-  +-- Prepend ticket to tickets[]
-  +-- Persist to localStorage
+POST /api/tickets (via ticketStore.createTicket)
   |
   v
-canvas-confetti fires
+Server:
+  +-- Generate ticketNumber: "TKT-{max+1}"
+  +-- Insert into tickets table
+  +-- Log activity: "Ticket created", "Assigned to X", "Priority set to Y"
+  +-- Create notifications for all admin users
+  +-- Return ticket object
   |
   v
-Toast: "Ticket TKT-XXXX created!"
-Toast: "Email notification would be sent to {email}"
-  |
-  v
-Navigate to home page (after 2s delay)
+Client:
+  +-- Prepend ticket to store.tickets[]
+  +-- canvas-confetti fires
+  +-- Toast: "Ticket TKT-XXXX created!"
+  +-- Navigate to home page
 ```
 
 ### 2. User Authentication
 
 ```
 Login:
-  User enters email + password on LoginPage
+  POST /api/auth/login { email, password }
     |
     v
-  authStore.login(email, password)
-    |
-    +-- Find user in users[] by email (case-insensitive)
-    +-- Verify password via verifyPassword(input, stored)
-    +-- Set currentUser = matched user
-    +-- Persist to localStorage
+  Server: find user by email/username, bcrypt.compare → JWT token
     |
     v
-  Navigate to /admin (if admin) or /dashboard (if user)
+  Client: store JWT in localStorage("auth-token"), set currentUser
+    |
+    v
+  fetchUsers() to populate user list
+    |
+    v
+  Navigate to /admin (admin) or /dashboard (user)
 
 Register:
-  User fills RegisterPage form
+  POST /api/auth/register { name, email, password }
     |
     v
-  authStore.register(name, email, password)
-    |
-    +-- Check for duplicate email
-    +-- Hash password with hashPassword()
-    +-- Append new User to users[]
-    +-- Increment nextUserId
-    +-- Persist to localStorage
+  Server: check duplicate, bcrypt.hash, generate username, insert → JWT
     |
     v
-  Navigate to /login
+  Client: store JWT, set currentUser
 
-Logout:
-  authStore.logout()
+App Reload:
+  authStore.initialize()
     |
-    +-- Set currentUser = null
-    +-- Persist to localStorage
-    |
-    v
-  Navigate to /
+    +-- Read JWT from localStorage
+    +-- GET /api/auth/me to validate token
+    +-- Set currentUser if valid, clear token if expired
 ```
 
 ### 3. Ticket Tracking (Public)
 
 ```
-User enters ticket number + email on TrackPage
+User enters ticket number on TrackPage
   |
   v
-ticketStore.getTicketByNumber(number)
+GET /api/tickets/by-number/:num
   |
   v
-Compare ticket.submitterEmail with entered email (case-insensitive)
-  |
-  +-- Match: Show TicketDetails + ResponseForm
-  +-- No match: Toast error "No ticket found"
+Show ticket details, gate responses behind email verification
   |
   v
-Email stored in localStorage key "track-email" for future visits
+Email stored in localStorage("track-email") for future visits
 ```
 
 ### 4. Adding a Response
@@ -113,131 +113,103 @@ Email stored in localStorage key "track-email" for future visits
 User/Admin fills ResponseForm
   |
   v
-ticketStore.addResponse({
-  ticketId, userId?, userName, userRole,
-  message, images[], isInternal
-})
-  |
-  +-- Create TicketResponse with nextResponseId
-  +-- Append to responses[]
-  +-- Update ticket.updatedAt
-  +-- Persist to localStorage
+POST /api/tickets/:id/responses { message, images, isInternal, ... }
   |
   v
-Toast: "Response added"
-Toast: "Email notification would be sent" (if not internal)
+Server:
+  +-- Insert response into responses table
+  +-- Update ticket.updated_at
+  +-- Detect @mentions in message text
+  +-- For each @mentioned user:
+  |     +-- Create notification: "{responder} mentioned you in TKT-XXXX"
+  |     +-- Log activity: "{responder} notified {mentioned user}"
+  +-- Notify ticket owner (if not internal, not self)
+  |
+  v
+Client:
+  +-- Append response to store.responses[]
+  +-- Increment responseCounts
+  +-- Toast: "Response added", "{User} notified" for mentions
 ```
 
-### 5. Admin Ticket Update
+### 5. Ticket Update (Admin or Owner)
 
 ```
-Admin changes status/priority dropdowns on AdminTicketDetailPage
+Admin/Owner edits ticket fields
   |
   v
-ticketStore.updateTicket(id, { status?, priority? })
-  |
-  +-- Patch ticket fields
-  +-- If status is "closed" or "resolved": set closedAt = now
-  +-- If status changes to other value: clear closedAt
-  +-- Set updatedAt = now
-  +-- Persist to localStorage
+PUT /api/tickets/:id { status, priority, subject, description, assignedTo, ccEmails, createdAt }
   |
   v
-Toast: "Ticket updated"
+Server:
+  +-- Verify admin or owner permission
+  +-- Update ticket fields
+  +-- Log activity for changes (status, priority, new assignments)
+  +-- Notify ticket owner if edited by someone else
+  |
+  v
+Client: update ticket in store.tickets[]
 ```
 
-### 6. Ticket Deletion
+### 6. @Mention Flow
 
 ```
-Admin clicks Delete on AdminTicketDetailPage
+User types "@" in ResponseForm textarea
   |
   v
-ConfirmDialog shown
-  |
-  v (confirmed)
-ticketStore.deleteTicket(id)
-  |
-  +-- Remove ticket from tickets[]
-  +-- Remove all responses where ticketId matches (cascade)
-  +-- Persist to localStorage
+Client: autocomplete dropdown shows matching usernames
   |
   v
-Toast: "Ticket deleted"
-Navigate to /admin
-```
-
----
-
-## Search and Sort Flow
-
-```
-User types in SearchInput (HomePage or AdminDashboardPage)
+User selects username → inserted as @username in message
   |
   v
-uiStore.setSearchQuery(query)
+On submit → server detects @mentions → creates notifications + activity
   |
   v
-Page component uses useMemo:
-  query ? ticketStore.searchTickets(query) : ticketStore.tickets
-  |
-  +-- searchTickets filters on: ticketNumber, subject, description, submitterEmail
-  |
-  v
-Filtered tickets passed to TicketTable
-
-User clicks column header in TicketTable
-  |
-  v
-uiStore.setSortField(field)
-  |
-  +-- If same field: toggle sortOrder (asc <-> desc)
-  +-- If different field: set new field, reset to desc
-  |
-  v
-TicketTable sorts in-memory using String.localeCompare with numeric option
+Mentioned user: sees notification in bell icon, can resolve/edit ticket
 ```
 
 ---
 
-## Route Protection Flow
+## Image Paste Flow
 
 ```
-Page component calls useRequireAuth(adminOnly?)
+User pastes image (Ctrl+V) or rich content from Gmail
   |
   v
-Check authStore.currentUser
+handleRichPaste() in paste-utils.ts:
+  +-- Screenshot paste: FileReader → base64
+  +-- Gmail HTML paste: parse HTML, extract <img> tags, convert to base64 via canvas
   |
-  +-- null: navigate("/login", replace)
-  +-- user role, adminOnly=true: navigate("/dashboard", replace)
-  +-- authorized: return currentUser, render page
+  v
+Insert {{img:N}} placeholder at cursor position in textarea
+Add base64 data to images[] array
+  |
+  v
+On submit: images[] stored in DB, {{img:N}} in text
+  |
+  v
+On display: DescriptionWithEmbeds renders {{img:N}} as inline <img> tags
 ```
-
-For public ticket detail pages (`/tickets/:id`), access is gated by an inline email verification form rather than `useRequireAuth`.
 
 ---
 
-## Image Data Flow
+## Activity Tracking Flow
 
 ```
-User selects files via ImageUpload component
+Ticket events → ticket_activity table
+  |
+  +-- created: "Ticket created"
+  +-- assigned: "Assigned to {username}"
+  +-- status_changed: "Status set to {status}"
+  +-- priority_changed: "Priority set to {priority}"
+  +-- mentioned: "{User1} notified {User2}"
   |
   v
-FileReader.readAsDataURL() converts each file to base64 string
-  |
-  +-- Validation: must be image/*, max 5MB, max 5 images
+GET /api/tickets/:id returns activities[] alongside ticket + responses
   |
   v
-Base64 strings stored in component state as string[]
-  |
-  v
-On form submit: base64 strings saved into ticket.images or response.images
-  |
-  v
-Persisted to localStorage as part of the ticket/response JSON
-
-Display:
-  ImageGallery renders <img src={base64DataUrl} />
-  Click opens lightbox overlay (Framer Motion animated)
+Displayed in right sidebar with colored dots per action type
 ```
 
 ---
@@ -245,21 +217,17 @@ Display:
 ## Persistence Lifecycle
 
 ```
-App loads
+Docker volume (db-data) → SQLite file (portal.db)
   |
   v
-Zustand persist middleware reads localStorage keys
-  |
-  +-- "ticket-portal-auth" exists?
-  |     Yes: rehydrate authStore (users, currentUser, nextUserId)
-  |     No:  use initial state (default admin user seeded)
-  |
-  +-- "ticket-portal-tickets" exists?
-  |     Yes: rehydrate ticketStore (tickets, responses, counters)
-  |     No:  use initial state (empty arrays, counters at 1/1001/1)
+On first run: schema created, admin + 7 default users seeded
   |
   v
-Any store mutation triggers:
-  1. React re-render (subscribed components)
-  2. Serialize full store state to localStorage
+On Docker rebuild: volume persists, data survives
+  |
+  v
+API reads/writes SQLite directly (better-sqlite3, synchronous)
+  |
+  v
+Frontend caches in Zustand stores, refetches on navigation
 ```

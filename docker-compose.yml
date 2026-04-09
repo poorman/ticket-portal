@@ -8,6 +8,24 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+    networks:
+      - default
+      - traefik-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      # HTTP -> HTTPS redirect
+      - "traefik.http.routers.crane-network-http.entrypoints=web"
+      - "traefik.http.routers.crane-network-http.rule=Host(`crane.network`) || Host(`www.crane.network`)"
+      - "traefik.http.routers.crane-network-http.middlewares=redirect-https@docker"
+      # HTTPS router
+      - "traefik.http.routers.crane-network.entrypoints=websecure"
+      - "traefik.http.routers.crane-network.rule=Host(`crane.network`) || Host(`www.crane.network`)"
+      - "traefik.http.routers.crane-network.tls=true"
+      - "traefik.http.routers.crane-network.tls.certresolver=le"
+      - "traefik.http.routers.crane-network.service=crane-network"
+      # Service port
+      - "traefik.http.services.crane-network.loadbalancer.server.port=80"
 
   api:
     build:
@@ -20,6 +38,10 @@ services:
       - DB_PATH=/app/data/portal.db
       - PORT=3001
     restart: unless-stopped
+
+networks:
+  traefik-proxy:
+    external: true
 
 volumes:
   db-data:

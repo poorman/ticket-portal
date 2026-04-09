@@ -50,13 +50,14 @@ JWT-based auth. Passwords hashed with bcrypt. Token stored in localStorage as `a
 - `GET /api/tickets` — List tickets
 - `POST /api/tickets` — Create ticket
 - `GET /api/tickets/:id` — Get ticket with responses
-- `PUT /api/tickets/:id` — Update ticket (admin)
+- `PUT /api/tickets/:id` — Update ticket (admin or owner; supports subject, description, assignedTo, ccEmails, status, priority, createdAt)
 - `DELETE /api/tickets/:id` — Delete ticket (admin)
-- `POST /api/tickets/:id/resolve` — Resolve ticket
-- `POST /api/tickets/:id/responses` — Add response
+- `POST /api/tickets/:id/resolve` — Resolve ticket (submitter/assignee/mentioned/admin)
+- `POST /api/tickets/:id/responses` — Add response (detects @mentions, creates notifications + activity)
 - `DELETE /api/tickets/responses/:id` — Delete response (admin)
 - `GET /api/tickets/search?q=` — Deep search
 - `GET /api/tickets/by-number/:num` — Lookup by ticket number
+- `PUT /api/auth/avatar` — Upload user avatar (base64)
 - `GET /api/notifications` — Get notifications
 - `POST /api/notifications/:id/read` — Mark read
 - `POST /api/notifications/read-all` — Mark all read
@@ -71,12 +72,14 @@ Four stores in `src/store/`:
 
 ### Data Model
 Defined in `src/types/index.ts`:
-- **User** — email/password auth, `UserRole` enum (user/admin)
-- **Ticket** — unique `ticketNumber` (TKT-XXXX format), enums for type/status/priority, image attachments as base64
+- **User** — email/password auth, `UserRole` enum (user/admin), optional avatar (base64)
+- **Ticket** — unique `ticketNumber` (TKT-XXXX format), enums for type/status/priority, image attachments as base64, inline image placeholders `{{img:N}}`
 - **TicketResponse** — belongs to ticket, optional user, `isInternal` flag for admin-only notes
+- **TicketActivity** — audit log per ticket (created, assigned, status_changed, priority_changed, mentioned)
 
 ### Frontend Libraries
 - `src/lib/api.ts` — Fetch wrapper with JWT auth headers
+- `src/lib/paste-utils.ts` — Rich clipboard paste handler (images, Gmail HTML content)
 - `src/lib/ticket-utils.ts` — Display helpers, date formatting
 - `src/hooks/useAuth.ts` — Convenience auth hook
 - `src/hooks/useRequireAuth.ts` — Route guard hook

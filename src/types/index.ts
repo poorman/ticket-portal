@@ -11,9 +11,20 @@ export interface User {
   name: string;
   phone?: string;
   role: UserRole;
+  avatar?: string;
   suspended?: boolean;
   createdAt: string;
   lastLoginAt?: string;
+}
+
+export interface TicketActivity {
+  id: number;
+  ticketId: number;
+  userId?: number;
+  userName: string;
+  action: string;
+  detail: string;
+  createdAt: string;
 }
 
 export interface Ticket {
@@ -34,6 +45,7 @@ export interface Ticket {
   createdAt: string;
   updatedAt: string;
   closedAt?: string;
+  portal?: string;
 }
 
 export interface TicketResponse {
@@ -60,6 +72,7 @@ export interface CreateTicketInput {
   ccEmails?: string[];
   priority?: TicketPriority;
   images?: string[];
+  portal?: string;
 }
 
 export interface CreateResponseInput {

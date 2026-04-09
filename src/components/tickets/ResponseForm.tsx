@@ -5,6 +5,7 @@ import { useTicketStore } from '../../store/ticketStore';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
 import ImageUpload from '../ui/ImageUpload';
+import { handleRichPaste } from '../../lib/paste-utils';
 
 interface ResponseFormProps {
   ticketId: number;
@@ -123,27 +124,16 @@ export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: Re
         isInternal: isAdmin ? isInternal : false,
       });
 
-      // Detect @mentions and notify tagged users
+      // Mentions are now handled server-side (notifications + activity logged)
       const mentions = message.match(/@(\w+)/g);
       if (mentions && !isInternal) {
         const mentionedNames = mentions.map((m) => m.slice(1).toLowerCase());
         const mentionedUsers = users.filter((u) =>
-          mentionedNames.some(
-            (name) =>
-              u.name.toLowerCase().includes(name) ||
-              u.username.toLowerCase() === name
-          )
+          mentionedNames.some((name) => u.username.toLowerCase() === name || u.name.toLowerCase().includes(name))
         );
         for (const mu of mentionedUsers) {
-          toast(`Email sent to ${mu.name} (${mu.email}) — mentioned in response`, { icon: '📧', duration: 4000 });
+          toast(`${mu.name} notified`, { icon: '📧', duration: 3000 });
         }
-        if (mentionedUsers.length === 0 && mentions.length > 0) {
-          toast(`Could not match ${mentions.join(', ')} to any user`, { icon: '⚠️' });
-        }
-      }
-
-      if (!isInternal && (!mentions || mentions.length === 0)) {
-        toast(`Email notification would be sent`, { icon: '📧' });
       }
       toast.success('Response added');
       setMessage('');
@@ -189,7 +179,18 @@ export default function ResponseForm({ ticketId, submitterEmail, onSuccess }: Re
           value={message}
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
-          placeholder="Type your response... Use @ to mention users"
+          onPaste={async (e) => {
+            const result = await handleRichPaste(e, images);
+            if (result) {
+              const ta = textareaRef.current;
+              const pos = ta?.selectionStart ?? message.length;
+              const before = message.slice(0, pos);
+              const after = message.slice(pos);
+              setMessage(before + result.text + after);
+              setImages(result.images);
+            }
+          }}
+          placeholder="Type your response... Use @ to mention users. Paste images with Ctrl+V"
           className="textarea"
           rows={4}
           required

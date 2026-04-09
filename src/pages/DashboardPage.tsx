@@ -8,15 +8,17 @@ import StatusPieChart from '../components/charts/StatusPieChart';
 import TicketsOverTimeChart from '../components/charts/TicketsOverTimeChart';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useTicketStore } from '../store/ticketStore';
+import { usePortalStore } from '../store/portalStore';
 
 export default function DashboardPage() {
   const user = useRequireAuth();
   const getTicketsForUser = useTicketStore((s) => s.getTicketsForUser);
   const fetchTickets = useTicketStore((s) => s.fetchTickets);
+  const activePortal = usePortalStore((s) => s.activePortal);
 
   useEffect(() => {
-    fetchTickets();
-  }, [fetchTickets]);
+    fetchTickets(activePortal);
+  }, [fetchTickets, activePortal]);
 
   const tickets = useMemo(
     () => (user ? getTicketsForUser(user.id, user.email) : []),

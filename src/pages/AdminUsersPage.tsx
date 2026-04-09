@@ -24,6 +24,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuthStore } from '../store/authStore';
 import { useTicketStore } from '../store/ticketStore';
+import { usePortalStore } from '../store/portalStore';
 import { formatDate } from '../lib/ticket-utils';
 import type { User, UserRole } from '../types';
 
@@ -48,11 +49,12 @@ export default function AdminUsersPage() {
   const adminToggleSuspend = useAuthStore((s) => s.adminToggleSuspend);
   const tickets = useTicketStore((s) => s.tickets);
   const fetchTickets = useTicketStore((s) => s.fetchTickets);
+  const activePortal = usePortalStore((s) => s.activePortal);
 
   useEffect(() => {
     fetchUsers();
-    fetchTickets();
-  }, [fetchUsers, fetchTickets]);
+    fetchTickets(activePortal);
+  }, [fetchUsers, fetchTickets, activePortal]);
 
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
@@ -134,7 +136,7 @@ export default function AdminUsersPage() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId === null) return;
-    const updates: Record<string, string | undefined> = {};
+    const updates: { name?: string; username?: string; email?: string; password?: string; phone?: string; role?: UserRole } = {};
     if (form.name) updates.name = form.name;
     if (form.username) updates.username = form.username;
     if (form.email) updates.email = form.email;
@@ -142,7 +144,7 @@ export default function AdminUsersPage() {
     if (form.phone !== undefined) updates.phone = form.phone;
     updates.role = form.role;
 
-    const result = await adminUpdateUser(editingId, updates as any);
+    const result = await adminUpdateUser(editingId, updates);
     if (result.error) {
       toast.error(result.error);
     } else {

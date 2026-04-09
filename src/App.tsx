@@ -18,17 +18,19 @@ import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 import { useAuthStore } from './store/authStore';
 import { useTicketStore } from './store/ticketStore';
+import { usePortalStore } from './store/portalStore';
 
 export default function App() {
   const initialized = useAuthStore((s) => s.initialized);
   const initialize = useAuthStore((s) => s.initialize);
   const fetchTickets = useTicketStore((s) => s.fetchTickets);
+  const activePortal = usePortalStore((s) => s.activePortal);
 
   useEffect(() => {
     initialize().then(() => {
-      fetchTickets();
+      fetchTickets(activePortal);
     });
-  }, [initialize, fetchTickets]);
+  }, [initialize, fetchTickets, activePortal]);
 
   if (!initialized) {
     return (

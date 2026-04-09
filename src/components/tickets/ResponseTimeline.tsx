@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Lock, User, Shield, X, Mail, Phone, Clock, AtSign } from 'lucide-react';
+import { Lock, User, Shield, X, Mail, Phone, Clock, AtSign } from 'lucide-react';
 import ImageGallery from '../ui/ImageGallery';
 import { formatDate } from '../../lib/ticket-utils';
 import { useTicketStore } from '../../store/ticketStore';
@@ -38,7 +38,9 @@ function UserPopover({ userId, userName, onClose }: { userId?: number; userName?
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0">
-              {user.role === 'admin' ? (
+              {user.avatar ? (
+                <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
+              ) : user.role === 'admin' ? (
                 <Shield size={18} className="text-crane" />
               ) : (
                 <User size={18} className="text-gray-400" />
@@ -101,97 +103,136 @@ export default function ResponseTimeline({ responses, ticketCreatorId }: { respo
   }
 
   return (
-    <div className="space-y-4">
-      {responses.map((resp, i) => (
-        <motion.div
-          key={resp.id}
-          initial={{ opacity: 0, x: -12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.05 }}
-          className="relative pl-8"
-        >
-          <div className="absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center bg-white/[0.06]">
-            {resp.isInternal ? (
-              <Lock size={12} className="text-amber-500" />
-            ) : (
-              <MessageSquare size={12} className="text-gray-500" />
-            )}
-          </div>
+    <div className="relative">
+      {/* Vertical timeline line */}
+      <div className="absolute left-[11px] top-4 bottom-4 w-px bg-white/[0.08]" />
 
-          <div
-            className={`rounded p-4 ${
-              resp.isInternal
-                ? 'bg-amber-500/[0.08] border border-amber-500/20'
-                : ticketCreatorId && resp.userId === ticketCreatorId
-                  ? 'bg-crane/[0.04] border border-crane/15'
-                  : 'bg-white/[0.03] border border-white/[0.06]'
-            }`}
-          >
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2">
-              <span className="relative">
-                <button
-                  onClick={() => setOpenPopover(openPopover === resp.id ? null : resp.id)}
-                  className="text-sm font-medium text-white hover:text-crane transition-colors cursor-pointer"
-                >
-                  {resp.userName || 'Anonymous'}
-                </button>
-                <AnimatePresence>
-                  {openPopover === resp.id && (
-                    <UserPopover
-                      userId={resp.userId}
-                      userName={resp.userName}
-                      onClose={() => setOpenPopover(null)}
-                    />
-                  )}
-                </AnimatePresence>
-              </span>
-              {resp.userRole === 'admin' ? (
-                <span className="badge bg-crane/20 text-crane">
-                  <Shield size={10} className="mr-1" /> Admin
-                </span>
-              ) : (
-                <span className="badge bg-white/[0.06] text-gray-400">
-                  <User size={10} className="mr-1" /> User
-                </span>
-              )}
-              {resp.isInternal && (
-                <span className="badge bg-amber-500/15 text-amber-400">
-                  <Lock size={10} className="mr-1" /> Internal
-                </span>
-              )}
-              <span className="text-xs text-gray-500 ml-auto shrink-0">
-                {formatDate(resp.createdAt)}
-              </span>
-              {isAdmin && (
-                <button
-                  onClick={async () => {
-                    await deleteResponse(resp.id);
-                    toast.success('Response deleted');
-                  }}
-                  className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-red-400 transition-colors shrink-0"
-                  title="Delete response"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-            <p className="text-sm text-gray-300 whitespace-pre-wrap">
-              {resp.message.split(/(@\w+)/g).map((part, idx) =>
-                part.match(/^@\w+$/) ? (
-                  <span key={idx} className="text-amber-400 font-medium">{part}</span>
-                ) : (
-                  part
-                )
-              )}
-            </p>
-            {resp.images.length > 0 && (
-              <div className="mt-3">
-                <ImageGallery images={resp.images} />
+      <div className="space-y-6">
+        {responses.map((resp, i) => {
+          const isAuthor = !!(ticketCreatorId && resp.userId === ticketCreatorId);
+          return (
+            <motion.div
+              key={resp.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="relative"
+            >
+              {/* Timeline dot + timestamp row */}
+              <div className="flex items-center gap-3 mb-2 pl-0">
+                <div className={`relative z-10 w-[23px] h-[23px] rounded-full flex items-center justify-center shrink-0 ${
+                  isAuthor ? 'bg-crane/20 border border-crane/30' :
+                  resp.isInternal ? 'bg-amber-500/15 border border-amber-500/25' :
+                  'bg-white/[0.06] border border-white/[0.08]'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${
+                    isAuthor ? 'bg-crane' :
+                    resp.isInternal ? 'bg-amber-500' :
+                    'bg-gray-500'
+                  }`} />
+                </div>
+                <span className="text-xs text-gray-500">{formatDate(resp.createdAt)}</span>
               </div>
-            )}
-          </div>
-        </motion.div>
-      ))}
+
+              {/* Response card — first/author gets bordered card, others are plain */}
+              <div className="ml-[35px]">
+                <div className={`p-4 ${
+                  resp.isInternal
+                    ? 'rounded-lg bg-amber-500/[0.06] border border-amber-500/15'
+                    : i === 0
+                      ? 'rounded-lg bg-white/[0.03] border border-white/[0.06]'
+                      : 'border-b border-white/[0.04] pb-5'
+                }`}>
+                  {/* User info row */}
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2.5">
+                    {/* Profile icon */}
+                    <div className="w-7 h-7 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
+                      <User size={13} className="text-gray-400" />
+                    </div>
+                    <span className="relative">
+                      <button
+                        onClick={() => setOpenPopover(openPopover === resp.id ? null : resp.id)}
+                        className="text-sm font-semibold text-white hover:text-crane transition-colors cursor-pointer"
+                      >
+                        {resp.userName || 'Anonymous'}
+                      </button>
+                      <AnimatePresence>
+                        {openPopover === resp.id && (
+                          <UserPopover
+                            userId={resp.userId}
+                            userName={resp.userName}
+                            onClose={() => setOpenPopover(null)}
+                          />
+                        )}
+                      </AnimatePresence>
+                    </span>
+                    {isAuthor && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-crane/15 text-crane font-medium border border-crane/20">
+                        Author
+                      </span>
+                    )}
+                    {resp.userRole === 'admin' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-crane/15 text-crane font-medium flex items-center gap-0.5">
+                        <Shield size={9} /> Admin
+                      </span>
+                    )}
+                    {!isAuthor && resp.userRole !== 'admin' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-gray-400 font-medium flex items-center gap-0.5">
+                        <User size={9} /> User
+                      </span>
+                    )}
+                    {resp.isInternal && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium flex items-center gap-0.5">
+                        <Lock size={9} /> Internal
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-500 ml-auto shrink-0">
+                      {formatDate(resp.createdAt)}
+                    </span>
+                    {isAdmin && (
+                      <button
+                        onClick={async () => {
+                          await deleteResponse(resp.id);
+                          toast.success('Response deleted');
+                        }}
+                        className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-red-400 transition-colors shrink-0 cursor-pointer"
+                        title="Delete response"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Message */}
+                  <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                    {resp.message.split(/(@\w+|\{\{img:\d+\}\})/g).map((part, idx) =>
+                      part.match(/^@\w+$/) ? (
+                        <span key={idx} className="text-amber-400 font-medium">{part}</span>
+                      ) : part.match(/^\{\{img:(\d+)\}\}$/) ? (
+                        (() => {
+                          const imgIdx = parseInt(part.match(/\{\{img:(\d+)\}\}/)![1], 10) - 1;
+                          return resp.images[imgIdx] ? (
+                            <div key={idx} className="my-2">
+                              <img src={resp.images[imgIdx]} alt="Pasted image" className="max-w-full rounded-lg border border-white/[0.08]" />
+                            </div>
+                          ) : part;
+                        })()
+                      ) : (
+                        part
+                      )
+                    )}
+                  </div>
+                  {resp.images.length > 0 && !resp.message.includes('{{img:') && (
+                    <div className="mt-3">
+                      <ImageGallery images={resp.images} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
 }

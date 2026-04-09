@@ -69,7 +69,33 @@ db.exec(`
     read INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS ticket_activity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    user_name TEXT DEFAULT '',
+    action TEXT NOT NULL,
+    detail TEXT DEFAULT '',
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_tickets_user_id ON tickets(user_id);
+  CREATE INDEX IF NOT EXISTS idx_tickets_ticket_number ON tickets(ticket_number);
+  CREATE INDEX IF NOT EXISTS idx_responses_ticket_id ON responses(ticket_id);
+  CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+  CREATE INDEX IF NOT EXISTS idx_activity_ticket_id ON ticket_activity(ticket_id);
 `);
+
+// Add avatar column to users if not exists
+try {
+  db.exec('ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT NULL');
+} catch { /* column already exists */ }
+
+// Add portal column to tickets if not exists
+try {
+  db.exec("ALTER TABLE tickets ADD COLUMN portal TEXT NOT NULL DEFAULT 'crane'");
+} catch { /* column already exists */ }
 
 // Seed default admin if no users exist
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
@@ -80,6 +106,22 @@ if (userCount.count === 0) {
     VALUES ('admin', 'admin@widesurf.com', ?, 'Admin User', 'admin', ?)
   `).run(hash, new Date().toISOString());
   console.log('Seeded default admin: admin@widesurf.com / admin123');
+
+  // Seed default users
+  const defaultUsers = [
+    ['kristina', 'kristina@cranenetwork.com', 'Kristina', 'kristina1243'],
+    ['oggie', 'oggie@civsav.com', 'Oggie', 'oggie1823'],
+    ['rana', 'Tayyab@civsav.com', 'Rana', 'rana1263'],
+    ['peter', 'pete.bieda@gmail.com', 'Peter', 'peter991'],
+    ['bj', 'BJBohne@imperialcrane.com', 'BJ', 'bj1123'],
+    ['rose', 'rcompobasso@imperialcrane.com', 'Rose', 'rose1523'],
+    ['robin', 'robin@cranenetwork.com', 'Robin', 'robin123'],
+  ];
+  const userStmt = db.prepare('INSERT INTO users (username, email, password, name, role, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+  for (const [username, email, name, pass] of defaultUsers) {
+    userStmt.run(username, email, bcrypt.hashSync(pass, 10), name, 'user', new Date().toISOString());
+  }
+  console.log('Seeded 7 default users');
 }
 
 // Helper: convert DB row (snake_case) to API response (camelCase)
@@ -103,6 +145,7 @@ function toTicket(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     closedAt: row.closed_at || undefined,
+    portal: row.portal || 'crane',
   };
 }
 
@@ -130,12 +173,32 @@ function toUser(row, includePassword = false) {
     name: row.name,
     phone: row.phone || '',
     role: row.role,
+    avatar: row.avatar || undefined,
     suspended: !!row.suspended,
     createdAt: row.created_at,
     lastLoginAt: row.last_login_at || undefined,
   };
   if (includePassword) u.password = row.password;
   return u;
+}
+
+function toActivity(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    ticketId: row.ticket_id,
+    userId: row.user_id,
+    userName: row.user_name || '',
+    action: row.action,
+    detail: row.detail || '',
+    createdAt: row.created_at,
+  };
+}
+
+function addActivity(ticketId, userId, userName, action, detail = '') {
+  db.prepare(
+    'INSERT INTO ticket_activity (ticket_id, user_id, user_name, action, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(ticketId, userId || null, userName || '', action, detail, new Date().toISOString());
 }
 
 function toNotification(row) {
@@ -151,4 +214,4 @@ function toNotification(row) {
   };
 }
 
-module.exports = { db, toTicket, toResponse, toUser, toNotification };
+module.exports = { db, toTicket, toResponse, toUser, toNotification, toActivity, addActivity };

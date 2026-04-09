@@ -37,8 +37,10 @@ SQLite database connection and schema management.
 | `toResponse()`   | Convert DB row to TicketResponse object           |
 | `toUser()`       | Convert DB row to User object (optional password) |
 | `toNotification()` | Convert DB row to Notification object           |
+| `toActivity()`   | Convert DB row to TicketActivity object           |
+| `addActivity()`  | Insert activity log entry for a ticket            |
 
-Seeds default admin user on first run.
+Tables: `users` (with avatar), `tickets`, `responses`, `notifications`, `ticket_activity`. Seeds default admin + 7 users on first run.
 
 ### `auth.js`
 JWT authentication middleware.
@@ -91,7 +93,7 @@ API-backed Zustand store for tickets and responses.
 | `fetchTickets()`         | Action | Load all tickets from API                             |
 | `fetchTicketDetail()`    | Action | Load single ticket with its responses                 |
 | `createTicket()`         | Action | Async POST to create ticket                           |
-| `updateTicket()`         | Action | Async PUT to update status/priority (admin)           |
+| `updateTicket()`         | Action | Async PUT to update ticket fields (admin or owner)    |
 | `resolveTicket()`        | Action | Async POST to resolve ticket                          |
 | `deleteTicket()`         | Action | Async DELETE ticket (admin)                           |
 | `addResponse()`          | Action | Async POST to add response                            |
@@ -129,6 +131,11 @@ Client-side only store (not persisted) for search/sort/filter UI state.
 | `api.put()` | PUT request with JSON body and auth header           |
 | `api.delete()` | DELETE request with auth header                   |
 | `ApiError`  | Custom error class with HTTP status code             |
+
+### `paste-utils.ts`
+| Function               | Description                                      |
+|------------------------|--------------------------------------------------|
+| `handleRichPaste()`    | Process clipboard paste (images, Gmail HTML) into text + base64 images |
 
 ### `ticket-utils.ts`
 | Function               | Description                                      |
@@ -182,9 +189,9 @@ Route guard hook. Redirects to `/login` if not authenticated, or to `/dashboard`
 | `TicketTable`      | Sortable paginated table with response counts and NEW badges     |
 | `TicketCard`       | Compact card for mobile ticket list view                         |
 | `TicketList`       | Maps tickets to animated TicketCard components                   |
-| `TicketDetails`    | Full ticket view with header, description, contact, responses    |
+| `TicketDetails`    | Full ticket view with profile avatar, Loom embeds, inline assigned/CC |
 | `ResponseForm`     | Response textarea with @mention autocomplete and image upload    |
-| `ResponseTimeline` | Chronological responses with user popovers and admin delete      |
+| `ResponseTimeline` | Chronological responses with Author badges, golden border, user popovers |
 
 ### Charts (`src/components/charts/`)
 | Component              | Description                                      |

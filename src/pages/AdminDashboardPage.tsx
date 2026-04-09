@@ -17,6 +17,7 @@ import TicketsOverTimeChart from '../components/charts/TicketsOverTimeChart';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useTicketStore } from '../store/ticketStore';
 import { useUIStore } from '../store/uiStore';
+import { usePortalStore } from '../store/portalStore';
 
 export default function AdminDashboardPage() {
   const user = useRequireAuth(true);
@@ -24,10 +25,11 @@ export default function AdminDashboardPage() {
   const searchTickets = useTicketStore((s) => s.searchTickets);
   const fetchTickets = useTicketStore((s) => s.fetchTickets);
   const { searchQuery, setSearchQuery } = useUIStore();
+  const activePortal = usePortalStore((s) => s.activePortal);
 
   useEffect(() => {
-    fetchTickets();
-  }, [fetchTickets]);
+    fetchTickets(activePortal);
+  }, [fetchTickets, activePortal]);
 
   const filteredTickets = useMemo(
     () => (searchQuery ? searchTickets(searchQuery) : tickets),
@@ -107,7 +109,7 @@ export default function AdminDashboardPage() {
               />
             </div>
           </div>
-          <TicketTable tickets={filteredTickets} linkPrefix="/admin/tickets" />
+          <TicketTable tickets={filteredTickets} linkPrefix="/admin/tickets" showDelete />
         </div>
       </div>
     </AnimatedPage>

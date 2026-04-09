@@ -1,5 +1,5 @@
 const express = require('express');
-const { db, toTicket, toResponse } = require('../db');
+const { db, toTicket, toResponse, toActivity, addActivity } = require('../db');
 const { optionalAuth, requireAuth, requireAdmin } = require('../auth');
 
 const router = express.Router();
@@ -17,15 +17,8 @@ function addNotification(userId, message, ticketNumber, ticketId, type) {
 
 // GET /api/tickets — list all tickets
 router.get('/', optionalAuth, (req, res) => {
-  let rows;
-  if (req.user && req.user.role === 'admin') {
-    rows = db.prepare('SELECT * FROM tickets ORDER BY updated_at DESC').all();
-  } else if (req.user) {
-    rows = db.prepare('SELECT * FROM tickets WHERE user_id = ? OR LOWER(submitter_email) = LOWER(?) ORDER BY updated_at DESC')
-      .all(req.user.id, req.user.email);
-  } else {
-    rows = db.prepare('SELECT * FROM tickets ORDER BY updated_at DESC').all();
-  }
+  const portal = req.query.portal || 'crane';
+  const rows = db.prepare('SELECT * FROM tickets WHERE portal = ? ORDER BY updated_at DESC').all(portal);
   const tickets = rows.map(toTicket);
 
   // Also return response counts
@@ -44,7 +37,8 @@ router.get('/search', optionalAuth, (req, res) => {
   const terms = query.split(/\s+/).filter(Boolean);
   if (!terms.length) return res.json({ results: [] });
 
-  const tickets = db.prepare('SELECT * FROM tickets ORDER BY updated_at DESC').all();
+  const searchPortal = req.query.portal || 'crane';
+  const tickets = db.prepare('SELECT * FROM tickets WHERE portal = ? ORDER BY updated_at DESC').all(searchPortal);
   const allResponses = db.prepare('SELECT * FROM responses WHERE is_internal = 0').all();
   const results = [];
 
@@ -115,15 +109,18 @@ router.get('/:id', optionalAuth, (req, res) => {
     ? db.prepare('SELECT * FROM responses WHERE ticket_id = ? ORDER BY created_at ASC').all(row.id)
     : db.prepare('SELECT * FROM responses WHERE ticket_id = ? AND is_internal = 0 ORDER BY created_at ASC').all(row.id);
 
+  const activityRows = db.prepare('SELECT * FROM ticket_activity WHERE ticket_id = ? ORDER BY created_at ASC').all(row.id);
+
   res.json({
     ticket: toTicket(row),
     responses: responseRows.map(toResponse),
+    activities: activityRows.map(toActivity),
   });
 });
 
 // POST /api/tickets — create ticket
 router.post('/', optionalAuth, (req, res) => {
-  const { type, subject, description, submitterName, submitterEmail, submitterPhone, userId, assignedTo, ccEmails, priority, images } = req.body;
+  const { type, subject, description, submitterName, submitterEmail, submitterPhone, userId, assignedTo, ccEmails, priority, images, portal } = req.body;
   if (!subject || !description || !submitterName || !submitterEmail) {
     return res.status(400).json({ error: 'Subject, description, name, and email are required' });
   }
@@ -131,8 +128,8 @@ router.post('/', optionalAuth, (req, res) => {
   const now = new Date().toISOString();
   const ticketNumber = `TKT-${getNextTicketNumber()}`;
   const result = db.prepare(`
-    INSERT INTO tickets (ticket_number, type, subject, description, submitter_name, submitter_email, submitter_phone, user_id, assigned_to, cc_emails, status, priority, images, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)
+    INSERT INTO tickets (ticket_number, type, subject, description, submitter_name, submitter_email, submitter_phone, user_id, assigned_to, cc_emails, status, priority, images, portal, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)
   `).run(
     ticketNumber,
     type || 'general',
@@ -146,11 +143,23 @@ router.post('/', optionalAuth, (req, res) => {
     JSON.stringify(ccEmails || []),
     priority || 'medium',
     JSON.stringify(images || []),
+    portal || 'crane',
     now,
     now
   );
 
   const ticket = toTicket(db.prepare('SELECT * FROM tickets WHERE id = ?').get(result.lastInsertRowid));
+
+  // Log activity
+  addActivity(ticket.id, userId || null, submitterName, 'created', 'Ticket created');
+  if (assignedTo && assignedTo.length > 0) {
+    for (const username of assignedTo) {
+      addActivity(ticket.id, userId || null, submitterName, 'assigned', `Assigned to ${username}`);
+    }
+  }
+  if (priority && priority !== 'medium') {
+    addActivity(ticket.id, userId || null, submitterName, 'priority_set', `Priority set to ${priority.charAt(0).toUpperCase() + priority.slice(1)}`);
+  }
 
   // Notify all admins
   const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all();
@@ -161,23 +170,60 @@ router.post('/', optionalAuth, (req, res) => {
   res.status(201).json({ ticket });
 });
 
-// PUT /api/tickets/:id — update ticket (status/priority)
-router.put('/:id', requireAdmin, (req, res) => {
-  const { status, priority } = req.body;
+// PUT /api/tickets/:id — update ticket (admin or ticket owner)
+router.put('/:id', requireAuth, (req, res) => {
+  const { status, priority, subject, description, assignedTo, ccEmails, createdAt } = req.body;
   const row = db.prepare('SELECT * FROM tickets WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Ticket not found' });
 
-  const now = new Date().toISOString();
-  const closedAt = status === 'resolved' ? now : (status ? null : row.closed_at);
-  const isResolved = status === 'resolved';
+  const isOwner = req.user.id === row.user_id || req.user.email.toLowerCase() === row.submitter_email.toLowerCase();
+  if (req.user.role !== 'admin' && !isOwner) {
+    return res.status(403).json({ error: 'Not authorized to edit this ticket' });
+  }
 
-  db.prepare('UPDATE tickets SET status = ?, priority = ?, updated_at = ?, closed_at = ? WHERE id = ?')
-    .run(status ?? row.status, priority ?? row.priority, now, closedAt, row.id);
+  const now = new Date().toISOString();
+  const newStatus = status ?? row.status;
+  const closedAt = newStatus === 'resolved' ? now : (status ? null : row.closed_at);
+  const isResolved = newStatus === 'resolved' && row.status !== 'resolved';
+
+  // Admin can edit creation date
+  const newCreatedAt = (createdAt && req.user.role === 'admin') ? createdAt : row.created_at;
+
+  db.prepare(`UPDATE tickets SET subject = ?, description = ?, status = ?, priority = ?, assigned_to = ?, cc_emails = ?, created_at = ?, updated_at = ?, closed_at = ? WHERE id = ?`)
+    .run(
+      subject ?? row.subject,
+      description ?? row.description,
+      newStatus,
+      priority ?? row.priority,
+      assignedTo !== undefined ? JSON.stringify(assignedTo) : row.assigned_to,
+      ccEmails !== undefined ? JSON.stringify(ccEmails) : row.cc_emails,
+      newCreatedAt,
+      now,
+      closedAt,
+      row.id
+    );
 
   const ticket = toTicket(db.prepare('SELECT * FROM tickets WHERE id = ?').get(row.id));
 
-  // Notify ticket owner
-  if (row.user_id) {
+  // Log activity
+  const actorName = req.user.name || req.user.username;
+  if (status && status !== row.status) {
+    const display = status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    addActivity(row.id, req.user.id, actorName, 'status_changed', `Status set to ${display}`);
+  }
+  if (priority && priority !== row.priority) {
+    addActivity(row.id, req.user.id, actorName, 'priority_changed', `Priority set to ${priority.charAt(0).toUpperCase() + priority.slice(1)}`);
+  }
+  if (assignedTo !== undefined) {
+    const oldAssigned = JSON.parse(row.assigned_to || '[]');
+    const newAssigned = assignedTo.filter((u) => !oldAssigned.includes(u));
+    for (const username of newAssigned) {
+      addActivity(row.id, req.user.id, actorName, 'assigned', `Assigned to ${username}`);
+    }
+  }
+
+  // Notify ticket owner if someone else edited
+  if (row.user_id && req.user.id !== row.user_id) {
     addNotification(
       row.user_id,
       isResolved ? 'Ticket resolved' : `Ticket updated${status ? ` to ${status.replace('_', ' ')}` : ''}`,
@@ -189,7 +235,7 @@ router.put('/:id', requireAdmin, (req, res) => {
   res.json({ ticket });
 });
 
-// POST /api/tickets/:id/resolve — resolve ticket (for submitter/assignee)
+// POST /api/tickets/:id/resolve — resolve ticket (submitter/assignee/mentioned/admin)
 router.post('/:id/resolve', optionalAuth, (req, res) => {
   const row = db.prepare('SELECT * FROM tickets WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Ticket not found' });
@@ -198,14 +244,20 @@ router.post('/:id/resolve', optionalAuth, (req, res) => {
   db.prepare('UPDATE tickets SET status = ?, updated_at = ?, closed_at = ? WHERE id = ?')
     .run('resolved', now, now, row.id);
 
+  const actorName = req.user ? (req.user.name || req.user.username) : 'User';
+  addActivity(row.id, req.user ? req.user.id : null, actorName, 'status_changed', 'Status set to Resolved');
+
   const ticket = toTicket(db.prepare('SELECT * FROM tickets WHERE id = ?').get(row.id));
   res.json({ ticket });
 });
 
 // DELETE /api/tickets/:id
-router.delete('/:id', requireAdmin, (req, res) => {
+router.delete('/:id', requireAuth, (req, res) => {
   const row = db.prepare('SELECT * FROM tickets WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Ticket not found' });
+  const isAdmin = req.user.role === 'admin';
+  const isOwner = row.user_id && row.user_id === req.user.id;
+  if (!isAdmin && !isOwner) return res.status(403).json({ error: 'Not authorized to delete this ticket' });
   db.prepare('DELETE FROM tickets WHERE id = ?').run(row.id);
   res.json({ success: true });
 });
@@ -238,13 +290,39 @@ router.post('/:id/responses', optionalAuth, (req, res) => {
   const response = toResponse(db.prepare('SELECT * FROM responses WHERE id = ?').get(result.lastInsertRowid));
 
   // Notify ticket owner if not internal
-  if (!isInternal && ticketRow.user_id) {
+  if (!isInternal && ticketRow.user_id && ticketRow.user_id !== (userId || null)) {
     addNotification(
       ticketRow.user_id,
       `New response from ${userName || 'Anonymous'}`,
       ticketRow.ticket_number, ticketRow.id,
       'response_added'
     );
+  }
+
+  // Detect @mentions and notify/log activity
+  if (!isInternal) {
+    const mentions = (message.match(/@(\w+)/g) || []).map((m) => m.slice(1).toLowerCase());
+    if (mentions.length > 0) {
+      const allUsers = db.prepare('SELECT * FROM users').all();
+      const responderName = userName || 'Someone';
+      for (const mentionName of mentions) {
+        const mentionedUser = allUsers.find((u) =>
+          u.username.toLowerCase() === mentionName ||
+          u.name.toLowerCase().includes(mentionName)
+        );
+        if (mentionedUser) {
+          // Notify the mentioned user
+          addNotification(
+            mentionedUser.id,
+            `${responderName} mentioned you in ${ticketRow.ticket_number}`,
+            ticketRow.ticket_number, ticketRow.id,
+            'response_added'
+          );
+          // Log activity
+          addActivity(ticketRow.id, userId || null, responderName, 'mentioned', `${responderName} notified ${mentionedUser.name}`);
+        }
+      }
+    }
   }
 
   res.status(201).json({ response });

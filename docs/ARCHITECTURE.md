@@ -69,7 +69,7 @@ Express.js with CommonJS modules:
 - `routes/notifications.js` — Notification CRUD
 
 ### 5. Database (SQLite)
-Tables: `users`, `tickets`, `responses`, `notifications`. Array fields (assignedTo, ccEmails, images) stored as JSON text columns. Database file persisted via Docker volume.
+Tables: `users` (with avatar column), `tickets`, `responses`, `notifications`, `ticket_activity`. Array fields (assignedTo, ccEmails, images) stored as JSON text columns. Database file persisted via Docker volume. Activity table logs ticket events (created, assigned, status changes, @mentions).
 
 ## Authentication Flow
 

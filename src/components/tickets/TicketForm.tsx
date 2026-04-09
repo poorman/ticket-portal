@@ -4,12 +4,14 @@ import confetti from 'canvas-confetti';
 import toast from 'react-hot-toast';
 import { useTicketStore } from '../../store/ticketStore';
 import { useAuthStore } from '../../store/authStore';
+import { usePortalStore } from '../../store/portalStore';
 import { useAuth } from '../../hooks/useAuth';
 import ImageUpload from '../ui/ImageUpload';
+import { handleRichPaste } from '../../lib/paste-utils';
 import type { TicketType, TicketPriority } from '../../types';
 
-const DEFAULT_ASSIGNED_USERNAMES = ['oggie', 'tayyab'];
-const DEFAULT_CC_USERNAMES = ['kristina', 'robin', 'pbieda'];
+const DEFAULT_ASSIGNED_USERNAMES = ['oggie', 'rana'];
+const DEFAULT_CC_USERNAMES = ['kristina', 'robin', 'peter', 'bj', 'rose'];
 
 interface TicketFormProps {
   onSuccess?: (ticketNumber: string) => void;
@@ -19,6 +21,7 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
   const { user, isLoggedIn, isAdmin } = useAuth();
   const createTicket = useTicketStore((s) => s.createTicket);
   const allUsers = useAuthStore((s) => s.users);
+  const activePortal = usePortalStore((s) => s.activePortal);
   const [loading, setLoading] = useState(false);
   const [linkToAccount, setLinkToAccount] = useState(true);
   const [images, setImages] = useState<string[]>([]);
@@ -71,6 +74,7 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
         assignedTo: assignedTo.filter((u) => u && validUsernames.has(u)),
         ccEmails: ccEmails.filter((u) => u && validUsernames.has(u)),
         images,
+        portal: activePortal,
       });
 
       confetti({
@@ -160,14 +164,29 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
       <div>
         <label className="label">Description</label>
         <textarea
+          id="ticket-description"
           value={form.description}
           onChange={(e) => update('description', e.target.value)}
-          placeholder="Please provide details about your issue..."
+          onPaste={async (e) => {
+            const result = await handleRichPaste(e, images);
+            if (result) {
+              const ta = document.getElementById('ticket-description') as HTMLTextAreaElement;
+              const pos = ta?.selectionStart ?? form.description.length;
+              const before = form.description.slice(0, pos);
+              const after = form.description.slice(pos);
+              update('description', before + result.text + after);
+              setImages(result.images);
+            }
+          }}
+          placeholder="Please provide details about your issue... (paste images with Ctrl+V)"
           className="textarea"
           rows={5}
           required
           minLength={10}
         />
+        {images.length > 0 && (
+          <p className="text-xs text-gray-500 mt-1">{images.length} image{images.length > 1 ? 's' : ''} pasted inline</p>
+        )}
       </div>
 
       {!isLoggedIn && (
@@ -228,10 +247,8 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
           className="select"
           value=""
           onChange={(e) => {
-            if (e.target.value && !assignedTo.includes(e.target.value)) {
-              setAssignedTo((prev) => [...prev, e.target.value]);
-            }
-            e.target.value = '';
+            const v = e.target.value;
+            if (v && !assignedTo.includes(v)) setAssignedTo([...assignedTo, v]);
           }}
         >
           <option value="">Add person...</option>
@@ -262,10 +279,8 @@ export default function TicketForm({ onSuccess }: TicketFormProps) {
           className="select"
           value=""
           onChange={(e) => {
-            if (e.target.value && !ccEmails.includes(e.target.value)) {
-              setCcEmails((prev) => [...prev, e.target.value]);
-            }
-            e.target.value = '';
+            const v = e.target.value;
+            if (v && !ccEmails.includes(v)) setCcEmails([...ccEmails, v]);
           }}
         >
           <option value="">Add person...</option>

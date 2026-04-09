@@ -84,5 +84,15 @@ router.put('/profile', requireAuth, (req, res) => {
   res.json({ user });
 });
 
+// PUT /api/auth/avatar
+router.put('/avatar', requireAuth, (req, res) => {
+  const { avatar } = req.body;
+  if (!avatar) return res.status(400).json({ error: 'Avatar data required' });
+
+  db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatar, req.user.id);
+  const user = toUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id));
+  res.json({ user });
+});
+
 module.exports = router;
 module.exports.generateUsername = generateUsername;

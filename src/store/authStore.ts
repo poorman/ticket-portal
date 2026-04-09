@@ -27,6 +27,7 @@ interface AuthState {
   adminUpdateUser: (id: number, updates: AdminUserUpdate) => Promise<{ error?: string }>;
   adminDeleteUser: (id: number) => Promise<{ error?: string }>;
   adminToggleSuspend: (id: number) => Promise<{ error?: string }>;
+  updateAvatar: (avatar: string) => Promise<{ error?: string }>;
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
@@ -41,7 +42,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         const data = await api.get<{ user: User }>('/auth/me');
         set({ currentUser: data.user, initialized: true });
         get().fetchUsers();
-      } catch {
+      } catch (e) {
+        console.error('Auth init failed:', e);
         localStorage.removeItem('auth-token');
         set({ initialized: true });
       }
@@ -57,7 +59,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       set({ currentUser: data.user });
       get().fetchUsers();
       return data.user;
-    } catch {
+    } catch (e) {
+      console.error('Login failed:', e);
       return null;
     }
   },
@@ -138,6 +141,19 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       const res = await api.post<{ user: User }>(`/users/${id}/suspend`);
       set((state) => ({
         users: state.users.map((u) => (u.id === id ? res.user : u)),
+      }));
+      return {};
+    } catch (e: unknown) {
+      return { error: (e as Error).message };
+    }
+  },
+
+  updateAvatar: async (avatar) => {
+    try {
+      const res = await api.put<{ user: User }>('/auth/avatar', { avatar });
+      set((state) => ({
+        currentUser: res.user,
+        users: state.users.map((u) => (u.id === res.user.id ? res.user : u)),
       }));
       return {};
     } catch (e: unknown) {

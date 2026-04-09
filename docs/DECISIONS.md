@@ -4,86 +4,86 @@ Key architectural and technical decisions made during the project, with rational
 
 ---
 
-## 1. Client-Side Only (No Backend)
+## 1. Express.js + SQLite Backend
 
-**Decision:** All data persisted to localStorage via Zustand. No server, database, or API.
+**Decision:** Full-stack architecture with Express.js API and SQLite (better-sqlite3) for persistent storage.
 
-**Rationale:** The app was rewritten from a Next.js full-stack app (Prisma + PostgreSQL + NextAuth) to a pure SPA. The goal was a lightweight, self-contained demo that can run anywhere without infrastructure dependencies. Trade-off: no multi-user sync, no real email notifications, limited storage capacity (~5-10MB).
+**Rationale:** Originally a client-side-only SPA with localStorage. Migrated to a real backend to enable multi-device access, shared data across browsers, and proper authentication. SQLite chosen for zero-config deployment — no separate database server needed. better-sqlite3 provides synchronous, fast access without connection pooling overhead.
 
 **Consequences:**
-- Email notifications are simulated as toast messages
-- File uploads stored as base64 data URLs (increases localStorage usage)
-- Passwords use simple base64 encoding (btoa), not bcrypt
-- All users see the same data only on the same browser
+- Data persists across devices and browsers
+- Real bcrypt password hashing and JWT authentication
+- Docker volume ensures data survives container rebuilds
+- SQLite file-level locking sufficient for expected concurrency
 
 ---
 
-## 2. Zustand Over Redux/Context
+## 2. Zustand for State Management
 
-**Decision:** Zustand for all state management.
+**Decision:** Zustand stores backed by async API calls for all state management.
 
-**Rationale:** Zustand provides a minimal API with built-in `persist` middleware for localStorage. No boilerplate (reducers, actions, providers). Stores are plain functions callable from anywhere, including outside React components via `getState()`. Three separate stores keep concerns isolated without a global provider tree.
-
----
-
-## 3. React Router v6 With Hook-Based Route Guards
-
-**Decision:** Route protection via `useRequireAuth` hook inside page components, not wrapper `<Route>` elements.
-
-**Rationale:** Simpler than higher-order route components. The hook checks `authStore.currentUser` and calls `navigate()` on mismatch. Pages that need admin access pass `useRequireAuth(true)`. This avoids nested route configurations and keeps auth logic co-located with the page that needs it.
+**Rationale:** Zustand provides minimal API with no boilerplate. Stores migrated from localStorage `persist` middleware to async API-backed pattern. Components don't need to know about the backend — they call store methods that internally make API requests. Three main stores (auth, tickets, notifications) plus two client-only stores (read tracking, UI state).
 
 ---
 
-## 4. TailwindCSS With Custom Component Classes
+## 3. JWT Authentication With localStorage
 
-**Decision:** TailwindCSS 3.4 with `@layer components` for reusable class groups (`.btn`, `.card`, `.input`, etc.) defined in `src/index.css`.
+**Decision:** JWT tokens stored in `localStorage('auth-token')`, attached to all API requests via Bearer header.
 
-**Rationale:** Avoids repeating long Tailwind class strings across components while keeping the styling system utility-first. Custom classes are scoped to the components layer so they can be overridden with utility classes when needed.
-
----
-
-## 5. Framer Motion for Page Transitions
-
-**Decision:** Every page wrapped in `<AnimatedPage>` which applies fade + slide-up on mount/unmount.
-
-**Rationale:** Provides a polished feel with minimal code. `AnimatePresence` in `App.tsx` coordinates exit animations. Individual list items (ticket rows, response bubbles) also use staggered Framer Motion animations.
+**Rationale:** Simple, stateless auth that works across page reloads. The API client (`src/lib/api.ts`) automatically attaches the token. On app load, `authStore.initialize()` validates the stored token via `GET /api/auth/me`. Token expiry handled server-side (7-day TTL).
 
 ---
 
-## 6. Separate Ticket and Response Collections
+## 4. Two-Service Docker Compose
 
-**Decision:** Tickets and responses stored as two flat arrays in `ticketStore`, linked by `ticketId`.
+**Decision:** Separate containers for frontend (nginx) and backend (Node.js API), connected via Docker network.
 
-**Rationale:** Mirrors the original relational database schema (Ticket has-many TicketResponse). Flat arrays are simpler to persist and filter than nested structures. Cascade delete is handled manually in `deleteTicket()` by filtering out matching responses.
-
----
-
-## 7. Ticket Number Auto-Increment
-
-**Decision:** Ticket numbers follow `TKT-{N}` format starting at 1001, with a counter in the store.
-
-**Rationale:** Ported directly from the original system. The counter (`nextTicketNumber`) persists in localStorage, ensuring unique sequential numbers across sessions.
+**Rationale:** nginx serves the static Vite build and proxies `/api/` requests to the API container. This separates concerns cleanly — frontend can be rebuilt without touching the API, and vice versa. SQLite database persisted via named Docker volume (`db-data`).
 
 ---
 
-## 8. Base64 Image Storage
+## 5. Activity Tracking Table
 
-**Decision:** Image attachments converted to base64 data URLs and stored inline in ticket/response objects.
+**Decision:** Dedicated `ticket_activity` table for logging all ticket events (created, assigned, status changes, mentions).
 
-**Rationale:** No server-side file storage available. Base64 encoding allows images to persist in localStorage alongside ticket data. Downside: inflates storage size (~33% overhead). Limited to 5 images per upload, 5MB each, with client-side validation.
-
----
-
-## 9. Crane Network Branding Via Tailwind Theme Extension
-
-**Decision:** Brand colors defined as custom Tailwind colors (`crane`, `crane-dark`, `crane-light`, `crane-lighter`) plus status colors in `tailwind.config.js`.
-
-**Rationale:** Centralizes the color palette. Components use semantic names (`bg-crane`, `text-status-open`) rather than hex values, making future rebrand a single-file change.
+**Rationale:** Provides an audit trail visible in the ticket detail sidebar. Activities are logged server-side on ticket creation, updates, resolution, and @mentions. Displayed with colored dots per action type.
 
 ---
 
-## 10. Docker + nginx for Production
+## 6. Inline Image Paste From Rich Content
 
-**Decision:** Multi-stage Docker build (Node for build, nginx for serve).
+**Decision:** Support pasting images and rich HTML content (Gmail) directly into textareas, rendered inline via `{{img:N}}` placeholders.
 
-**Rationale:** SPA produces static files -- nginx is the optimal server for this. SPA fallback (`try_files $uri /index.html`) handles client-side routing. No Node.js runtime needed in production.
+**Rationale:** Users frequently copy content from emails to create tickets. The paste handler (`paste-utils.ts`) parses HTML clipboard data, extracts `<img>` tags, converts them to base64 via canvas, and inserts placeholders. Images stored in the ticket's `images[]` array. `DescriptionWithEmbeds` renders placeholders as inline `<img>` tags alongside Loom video embeds.
+
+---
+
+## 7. Loom Video Embed Detection
+
+**Decision:** Automatically detect Loom share URLs in ticket descriptions and render them as embedded video players.
+
+**Rationale:** Many support tickets include Loom screen recordings. Auto-embedding lets users watch without leaving the portal. Detection uses regex matching on `loom.com/share/{id}` patterns, rendering as responsive 16:9 iframes.
+
+---
+
+## 8. Profile Avatar With Base64 Storage
+
+**Decision:** User avatars stored as base64 data URLs in the `users.avatar` column.
+
+**Rationale:** Simplest approach for a small user base. No external file storage or CDN needed. Upload limited to 2MB. Displayed in navbar dropdown, ticket detail sidebar, and response timeline. Fallback: generic user icon.
+
+---
+
+## 9. @Mention Server-Side Processing
+
+**Decision:** @mention detection handled server-side when creating responses, not just client-side.
+
+**Rationale:** Server creates notifications for mentioned users and logs activity ("User1 notified User2"). Mentioned users gain permission to resolve/edit the ticket. Client-side autocomplete assists with username selection, but the server is the authority on who gets notified.
+
+---
+
+## 10. Crane Network Branding Via Tailwind Theme
+
+**Decision:** Brand colors defined as custom Tailwind colors (`crane`, `crane-dark`, `crane-light`, `crane-lighter`) plus status colors in `tailwind.config.js`. Dark gradient background using `#161419`, `#161519`, `#141317`, `#121114`.
+
+**Rationale:** Centralizes the color palette. Components use semantic names (`bg-crane`, `text-status-open`) rather than hex values. Gold gradient buttons use radial-gradient CSS for the premium look.

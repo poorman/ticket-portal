@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
+import { ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, MessageSquare, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useUIStore } from '../../store/uiStore';
 import { useTicketStore } from '../../store/ticketStore';
+import { usePortalStore } from '../../store/portalStore';
 import { useReadStore } from '../../store/readStore';
+import ConfirmDialog from '../ui/ConfirmDialog';
 import StatusBadge from '../ui/StatusBadge';
 import PriorityBadge from '../ui/PriorityBadge';
 import TypeBadge from '../ui/TypeBadge';
@@ -16,14 +19,19 @@ const PAGE_SIZE = 10;
 interface TicketTableProps {
   tickets: Ticket[];
   linkPrefix?: string;
+  showDelete?: boolean;
 }
 
-export default function TicketTable({ tickets, linkPrefix = '/tickets' }: TicketTableProps) {
+export default function TicketTable({ tickets, linkPrefix = '/tickets', showDelete = false }: TicketTableProps) {
   const { sortField, sortOrder, setSortField } = useUIStore();
   const responseCounts = useTicketStore((s) => s.responseCounts);
+  const deleteTicket = useTicketStore((s) => s.deleteTicket);
+  const fetchTickets = useTicketStore((s) => s.fetchTickets);
+  const activePortal = usePortalStore((s) => s.activePortal);
   const seenCounts = useReadStore((s) => s.seenCounts);
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<Ticket | null>(null);
 
   const getResponseCount = (ticketId: number) =>
     responseCounts[ticketId] ?? 0;
@@ -32,6 +40,14 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
     const currentCount = getResponseCount(ticketId);
     const seen = seenCounts[ticketId] ?? 0;
     return currentCount > seen;
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteTicket(deleteTarget.id);
+    toast.success(`${deleteTarget.ticketNumber} deleted`);
+    setDeleteTarget(null);
+    await fetchTickets(activePortal);
   };
 
   const sorted = [...tickets].sort((a, b) => {
@@ -126,32 +142,47 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
             >
-              <Link
-                to={`${linkPrefix}/${ticket.id}`}
-                className="card card-hover block no-underline text-inherit"
-              >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="text-sm font-medium text-crane">{ticket.ticketNumber}</span>
-                    {hasNewResponses(ticket.id) && (
-                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-crane/20 text-crane leading-none">new</span>
+              <div className="card card-hover block relative">
+                <Link
+                  to={`${linkPrefix}/${ticket.id}`}
+                  className="block no-underline text-inherit"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <h3 className="text-sm font-medium text-white truncate flex-1 flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${
+                        ticket.priority === 'high' ? 'bg-red-400' : ticket.priority === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'
+                      }`} />
+                      {ticket.subject}
+                      {hasNewResponses(ticket.id) && (
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-crane/20 text-crane leading-none ml-1.5 align-middle">new</span>
+                      )}
+                    </h3>
+                    <div className="flex flex-col items-end shrink-0">
+                      <span className="text-[11px] text-crane font-medium">{ticket.ticketNumber}</span>
+                      <span className="text-[10px] text-gray-500">{formatDateShort(ticket.createdAt)}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <StatusBadge status={ticket.status} />
+                    <TypeBadge type={ticket.type} />
+                    {respCount > 0 && (
+                      <span className="inline-flex items-center gap-1 text-xs text-gray-500 ml-auto">
+                        <MessageSquare size={12} />
+                        {respCount}
+                      </span>
                     )}
-                  </span>
-                  <span className="text-xs text-gray-500 shrink-0">{formatDateShort(ticket.createdAt)}</span>
-                </div>
-                <h3 className="text-sm font-medium text-white truncate mb-2">{ticket.subject}</h3>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <StatusBadge status={ticket.status} />
-                  <PriorityBadge priority={ticket.priority} />
-                  <TypeBadge type={ticket.type} />
-                  {respCount > 0 && (
-                    <span className="inline-flex items-center gap-1 text-xs text-gray-500 ml-auto">
-                      <MessageSquare size={12} />
-                      {respCount}
-                    </span>
-                  )}
-                </div>
-              </Link>
+                  </div>
+                </Link>
+                {showDelete && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(ticket); }}
+                    className="absolute top-3 right-3 p-1.5 rounded text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                    title="Delete ticket"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             </motion.div>
           );
         })}
@@ -173,6 +204,7 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
               <SortHeader field="type">Type</SortHeader>
               <SortHeader field="lastResponse">Responses</SortHeader>
               <SortHeader field="createdAt">Created</SortHeader>
+              {showDelete && <th className="px-4 py-3 w-10"></th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.04]">
@@ -216,6 +248,17 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
                 <td className="px-4 py-3 text-sm text-gray-500">
                   {formatDateShort(ticket.createdAt)}
                 </td>
+                {showDelete && (
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(ticket); }}
+                      className="p-1.5 rounded text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                      title="Delete ticket"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                )}
               </motion.tr>
             ))}
           </tbody>
@@ -225,6 +268,14 @@ export default function TicketTable({ tickets, linkPrefix = '/tickets' }: Ticket
         )}
         <Pagination />
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Ticket"
+        message={deleteTarget ? `Are you sure you want to delete ${deleteTarget.ticketNumber}? This action cannot be undone.` : ''}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </>
   );
 }

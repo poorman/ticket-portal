@@ -1,6 +1,6 @@
 # Plugins & Extensibility
 
-The application is designed with clear extension points through its modular store and component architecture.
+The application is designed with clear extension points through its modular store, component, and API architecture.
 
 ---
 
@@ -8,187 +8,171 @@ The application is designed with clear extension points through its modular stor
 
 ### 1. Zustand Stores (Primary Extension Point)
 
-New domain logic is added by creating a new Zustand store in `src/store/` or extending an existing one.
+New domain logic is added by creating a new Zustand store in `src/store/` or extending an existing one. Stores are backed by the REST API.
 
 **Adding a new store:**
 
 ```typescript
-// src/store/notificationStore.ts
+// src/store/exampleStore.ts
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { api } from '../lib/api';
 
-interface Notification {
-  id: number;
-  message: string;
-  read: boolean;
-  createdAt: string;
+interface ExampleState {
+  items: Item[];
+  fetchItems: () => Promise<void>;
 }
 
-interface NotificationState {
-  notifications: Notification[];
-  addNotification: (message: string) => void;
-  markRead: (id: number) => void;
-  unreadCount: () => number;
-}
-
-export const useNotificationStore = create<NotificationState>()(
-  persist(
-    (set, get) => ({
-      notifications: [],
-      addNotification: (message) => { /* ... */ },
-      markRead: (id) => { /* ... */ },
-      unreadCount: () => get().notifications.filter(n => !n.read).length,
-    }),
-    { name: 'ticket-portal-notifications' }
-  )
-);
+export const useExampleStore = create<ExampleState>()((set) => ({
+  items: [],
+  fetchItems: async () => {
+    const data = await api.get<{ items: Item[] }>('/example');
+    set({ items: data.items });
+  },
+}));
 ```
 
 Stores are self-contained and don't require registration in a central provider. Import the hook anywhere to use it.
 
-**Extending an existing store:**
+---
 
-Add new fields and actions directly to the store's interface and implementation. The persist middleware will automatically include new fields in localStorage serialization. Existing persisted data is merged on rehydration (new fields get their default values).
+### 2. API Routes
+
+New backend functionality is added by creating route modules in `server/routes/`.
+
+```javascript
+// server/routes/example.js
+const express = require('express');
+const { db } = require('../db');
+const { requireAuth } = require('../auth');
+const router = express.Router();
+
+router.get('/', requireAuth, (req, res) => {
+  const rows = db.prepare('SELECT * FROM example WHERE user_id = ?').all(req.user.id);
+  res.json({ items: rows });
+});
+
+module.exports = router;
+```
+
+Mount in `server/index.js`:
+```javascript
+app.use('/api/example', require('./routes/example'));
+```
 
 ---
 
-### 2. Component System
+### 3. Component System
 
-Components follow a layered pattern that makes extension straightforward:
+Components follow a layered pattern:
 
 ```
 src/components/
-  ui/        <-- Generic reusable primitives
-  tickets/   <-- Domain-specific ticket components
-  charts/    <-- Data visualization
-  layout/    <-- App shell
+  ui/        ← Generic reusable primitives (badges, inputs, dialogs)
+  tickets/   ← Domain-specific ticket components
+  charts/    ← Data visualization (Recharts wrappers)
+  layout/    ← App shell (Navbar, Footer, PageLayout)
 ```
 
-**Adding a new domain module** (e.g., Knowledge Base):
+**Adding a new domain module:**
 
-1. Create `src/components/kb/` directory
-2. Build components following existing patterns (use `card` CSS class, `AnimatedPage` wrapper, Lucide icons)
-3. Create a page in `src/pages/KBPage.tsx`
+1. Create `src/components/domain/` directory
+2. Build components following existing patterns (`card` CSS class, `AnimatedPage` wrapper, Lucide icons)
+3. Create a page in `src/pages/`
 4. Add a route in `src/App.tsx`
-5. Optionally add a nav link in `Navbar.tsx`
+5. Add corresponding API route in `server/routes/`
 
 ---
 
-### 3. Badge System
+### 4. Activity System
 
-Status, priority, and type badges follow a consistent pattern. Adding a new badge type:
-
-```typescript
-// src/components/ui/SeverityBadge.tsx
-const styles: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700',
-  major: 'bg-orange-100 text-orange-700',
-  minor: 'bg-yellow-100 text-yellow-700',
-};
-
-export default function SeverityBadge({ severity }: { severity: string }) {
-  return <span className={`badge ${styles[severity] || 'bg-gray-100 text-gray-600'}`}>{severity}</span>;
-}
-```
-
----
-
-### 4. Chart System
-
-Charts are isolated Recharts wrappers in `src/components/charts/`. Adding a new chart:
-
-1. Create a new file in `src/components/charts/`
-2. Accept a `tickets: Ticket[]` prop (or whatever data source)
-3. Process data into the shape Recharts expects
-4. Use the existing color tokens from `tailwind.config.js` for consistency
-5. Drop the component into any page
-
----
-
-### 5. Route Guards
-
-The `useRequireAuth` hook supports two access levels (`user` and `admin`). To add more granular roles:
-
-1. Add new values to the `UserRole` type union in `src/types/index.ts`
-2. Update `useRequireAuth` to accept a `requiredRole` parameter instead of a boolean
-3. Update `authStore.isAdmin()` or add new role-check getters
-
----
-
-### 6. Tailwind Theme
-
-Brand colors and design tokens are centralized in `tailwind.config.js`. To add new semantic colors:
+Log custom events by calling `addActivity()` in any backend route:
 
 ```javascript
-// tailwind.config.js
+const { addActivity } = require('../db');
+
+// In a route handler:
+addActivity(ticketId, userId, userName, 'custom_action', 'Description of what happened');
+```
+
+Activities appear automatically in the ticket detail sidebar.
+
+---
+
+### 5. Notification System
+
+Create notifications for users from any backend route:
+
+```javascript
+const { db } = require('../db');
+
+db.prepare(
+  'INSERT INTO notifications (user_id, message, ticket_number, ticket_id, type, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+).run(userId, 'Something happened', ticketNumber, ticketId, 'custom_type', new Date().toISOString());
+```
+
+Notifications appear in the bell icon dropdown in the navbar.
+
+---
+
+### 6. Rich Content Embedding
+
+The `DescriptionWithEmbeds` component in `TicketDetails.tsx` supports extensible content detection. Currently handles:
+- **Loom videos**: `loom.com/share/{id}` → embedded iframe
+- **Inline images**: `{{img:N}}` → rendered from images array
+
+To add new embed types, extend the `EMBED_REGEX` pattern and add a new render case.
+
+---
+
+### 7. Tailwind Theme
+
+Brand colors and design tokens are centralized in `tailwind.config.js`:
+
+```javascript
 extend: {
   colors: {
-    crane: { /* existing */ },
-    status: { /* existing */ },
-    // Add new:
-    severity: {
-      critical: '#dc2626',
-      major: '#ea580c',
-      minor: '#ca8a04',
-    },
+    crane: { DEFAULT: '#d4a574', dark: '#b8935f', light: '#e8c49f', lighter: '#f5e6d3' },
+    status: { open: '#ef4444', in_progress: '#f59e0b', waiting: '#3b82f6', resolved: '#22c55e' },
   },
 }
 ```
 
-All components can then use `bg-severity-critical`, `text-severity-major`, etc.
-
----
-
-### 7. Custom CSS Component Classes
-
-Reusable class groups are defined in `src/index.css` under `@layer components`. Add new component classes here to avoid repeating long Tailwind strings:
-
+Background gradient defined in `src/index.css`:
 ```css
-@layer components {
-  .card-compact {
-    @apply bg-white rounded-lg shadow-sm border border-gray-100 p-3 text-sm;
-  }
-  .btn-ghost {
-    @apply text-gray-500 hover:text-gray-700 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors;
-  }
+body {
+  background: linear-gradient(135deg, #161419 0%, #161519 25%, #141317 50%, #161419 75%, #121114 100%);
 }
 ```
 
 ---
 
-## Integration Patterns
+### 8. Database Schema Extension
 
-### Adding a Backend API
+Add new tables in `server/db.js`:
 
-To migrate from localStorage to a real backend without rewriting components:
-
-1. Create an API client module (e.g., `src/lib/api.ts`) with fetch wrappers
-2. Replace Zustand store actions with async API calls
-3. Keep the same store interface -- components don't need to change
-4. Remove the `persist` middleware since the backend is the source of truth
-
-Example migration of `createTicket`:
-
-```typescript
-// Before (localStorage):
-createTicket: (data) => {
-  const ticket = { id: get().nextTicketId, ... };
-  set((state) => ({ tickets: [ticket, ...state.tickets] }));
-  return ticket;
-}
-
-// After (API):
-createTicket: async (data) => {
-  const ticket = await api.post('/tickets', data);
-  set((state) => ({ tickets: [ticket, ...state.tickets] }));
-  return ticket;
-}
+```javascript
+db.exec(`
+  CREATE TABLE IF NOT EXISTS my_table (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ...
+  );
+  CREATE INDEX IF NOT EXISTS idx_my_table_field ON my_table(field);
+`);
 ```
 
-### Adding WebSocket Support
+For adding columns to existing tables:
+```javascript
+try {
+  db.exec('ALTER TABLE users ADD COLUMN new_field TEXT DEFAULT NULL');
+} catch { /* column already exists */ }
+```
 
-Real-time updates can be layered in by:
+---
 
-1. Create a `src/lib/socket.ts` module that connects to a WebSocket server
-2. On incoming messages, call store actions directly: `useTicketStore.getState().updateTicket(...)`
-3. Zustand stores are callable outside React, so no provider wiring is needed
+### 9. Paste Handler Extension
+
+The `handleRichPaste()` function in `src/lib/paste-utils.ts` processes clipboard content. It handles:
+- Direct image file paste (screenshots)
+- Rich HTML content (Gmail, Outlook) with embedded images
+
+To support additional content types, extend the function to check for new clipboard data types.

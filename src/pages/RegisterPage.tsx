@@ -4,10 +4,12 @@ import { UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AnimatedPage from '../components/layout/AnimatedPage';
 import { useAuth } from '../hooks/useAuth';
+import { usePortalStore, PORTALS } from '../store/portalStore';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const portalName = PORTALS[usePortalStore((s) => s.activePortal)].name;
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
 
@@ -46,7 +48,7 @@ export default function RegisterPage() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-white">Create account</h1>
-            <p className="text-gray-500 mt-1">Get started with Crane Network Support</p>
+            <p className="text-gray-500 mt-1">Get started with {portalName} Support</p>
           </div>
 
           <div className="card">

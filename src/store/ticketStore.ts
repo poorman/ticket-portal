@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Ticket, TicketResponse, CreateTicketInput, CreateResponseInput } from '../types';
+import type { Ticket, TicketResponse, TicketActivity, CreateTicketInput, CreateResponseInput } from '../types';
 import { api } from '../lib/api';
 
 export interface SearchResult {
@@ -12,16 +12,17 @@ export interface SearchResult {
 interface TicketState {
   tickets: Ticket[];
   responses: TicketResponse[];
+  activities: Record<number, TicketActivity[]>;
   responseCounts: Record<number, number>;
   loading: boolean;
 
-  fetchTickets: () => Promise<void>;
-  fetchTicketDetail: (id: number) => Promise<{ ticket: Ticket; responses: TicketResponse[] } | null>;
+  fetchTickets: (portal?: string) => Promise<void>;
+  fetchTicketDetail: (id: number) => Promise<{ ticket: Ticket; responses: TicketResponse[]; activities: TicketActivity[] } | null>;
   createTicket: (data: CreateTicketInput) => Promise<Ticket>;
   getTicketById: (id: number) => Ticket | undefined;
   getTicketByNumber: (num: string) => Promise<Ticket | undefined>;
   getTicketsForUser: (userId: number, email: string) => Ticket[];
-  updateTicket: (id: number, updates: Partial<Pick<Ticket, 'status' | 'priority'>>) => Promise<Ticket | undefined>;
+  updateTicket: (id: number, updates: Partial<Pick<Ticket, 'status' | 'priority' | 'subject' | 'description' | 'assignedTo' | 'ccEmails' | 'createdAt'>>) => Promise<Ticket | undefined>;
   resolveTicket: (id: number) => Promise<Ticket | undefined>;
   deleteTicket: (id: number) => Promise<void>;
   searchTickets: (query: string) => Ticket[];
@@ -35,22 +36,24 @@ interface TicketState {
 export const useTicketStore = create<TicketState>()((set, get) => ({
   tickets: [],
   responses: [],
+  activities: {},
   responseCounts: {},
   loading: false,
 
-  fetchTickets: async () => {
+  fetchTickets: async (portal = 'crane') => {
     set({ loading: true });
     try {
-      const data = await api.get<{ tickets: Ticket[]; responseCounts: Record<number, number> }>('/tickets');
+      const data = await api.get<{ tickets: Ticket[]; responseCounts: Record<number, number> }>(`/tickets?portal=${portal}`);
       set({ tickets: data.tickets, responseCounts: data.responseCounts, loading: false });
-    } catch {
+    } catch (e) {
+      console.error('fetchTickets failed:', e);
       set({ loading: false });
     }
   },
 
   fetchTicketDetail: async (id) => {
     try {
-      const data = await api.get<{ ticket: Ticket; responses: TicketResponse[] }>(`/tickets/${id}`);
+      const data = await api.get<{ ticket: Ticket; responses: TicketResponse[]; activities: TicketActivity[] }>(`/tickets/${id}`);
       set((state) => ({
         tickets: state.tickets.some((t) => t.id === id)
           ? state.tickets.map((t) => (t.id === id ? data.ticket : t))
@@ -59,9 +62,11 @@ export const useTicketStore = create<TicketState>()((set, get) => ({
           ...state.responses.filter((r) => r.ticketId !== id),
           ...data.responses,
         ],
+        activities: { ...state.activities, [id]: data.activities || [] },
       }));
       return data;
-    } catch {
+    } catch (e) {
+      console.error('fetchTicketDetail failed:', e);
       return null;
     }
   },
