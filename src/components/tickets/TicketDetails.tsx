@@ -1,5 +1,5 @@
 import { useMemo, Fragment } from 'react';
-import { Calendar, Clock, User } from 'lucide-react';
+import { Calendar, User } from 'lucide-react';
 import StatusBadge from '../ui/StatusBadge';
 import PriorityBadge from '../ui/PriorityBadge';
 import TypeBadge from '../ui/TypeBadge';
@@ -67,7 +67,7 @@ export default function TicketDetails({ ticket, showInternalNotes = false, activ
         {/* Description Card */}
         <div className="card">
           <h3 className="text-sm font-semibold text-white/80 mb-3">Description</h3>
-          <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+          <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed break-words overflow-hidden">
             <DescriptionWithEmbeds text={ticket.description} images={ticket.images} />
           </div>
           {/* Show non-inline images as attachments */}
@@ -85,65 +85,68 @@ export default function TicketDetails({ ticket, showInternalNotes = false, activ
         </div>
       </div>
 
-      {/* RIGHT — Sidebar with vertical separator line */}
+      {/* RIGHT — Sidebar: 3-col grid on mobile, vertical on desktop */}
       <div className="pt-2 lg:border-l lg:border-white/[0.06] lg:pl-6">
-        {/* Created */}
-        <div className="pb-4 mb-4 border-b border-white/[0.06]">
-          <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Created</h4>
-          <div className="space-y-1 text-xs">
-            <div className="flex items-center gap-2 text-gray-300">
-              <Calendar size={11} className="text-gray-500" />
-              <span>{formatDate(ticket.createdAt)}</span>
+        {/* Compact 3-column row on mobile */}
+        <div className="grid grid-cols-3 gap-3 lg:grid-cols-1 lg:gap-0">
+          {/* Created */}
+          <div className="lg:pb-4 lg:mb-4 lg:border-b lg:border-white/[0.06]">
+            <h4 className="text-[10px] lg:text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 lg:mb-2">Created</h4>
+            <div className="space-y-0.5 lg:space-y-1 text-[10px] lg:text-xs">
+              <div className="flex items-center gap-1 lg:gap-2 text-gray-300">
+                <Calendar size={10} className="text-gray-500 hidden lg:block" />
+                <span>{formatDate(ticket.createdAt)}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-gray-300">
-              <Clock size={11} className="text-gray-500" />
-              <span>{formatDate(ticket.updatedAt)}</span>
-            </div>
+          </div>
+
+          {/* Assigned */}
+          <div className="lg:pb-4 lg:mb-4 lg:border-b lg:border-white/[0.06]">
+            <h4 className="text-[10px] lg:text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 lg:mb-2">Assigned</h4>
+            {assignedUsers.length > 0 ? (
+              <div className="space-y-1 lg:space-y-2">
+                {assignedUsers.map((u) => (
+                  <div key={u.username} className="flex items-center gap-1.5 lg:gap-2">
+                    <ProfileIcon name={u.name} avatar={u.avatar} size="sm" />
+                    <span className="text-[11px] lg:text-sm text-white truncate">{u.name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span className="text-[10px] text-gray-500">—</span>
+            )}
+          </div>
+
+          {/* CC */}
+          <div className="lg:pb-4 lg:mb-4 lg:border-b lg:border-white/[0.06]">
+            <h4 className="text-[10px] lg:text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 lg:mb-2">CC</h4>
+            {cc.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {cc.map((username) => (
+                  <span key={username} className="text-[10px] lg:text-xs px-1.5 lg:px-2 py-0.5 rounded-full bg-white/[0.06] text-gray-400">@{username}</span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-[10px] text-gray-500">—</span>
+            )}
           </div>
         </div>
 
-        {/* Assigned */}
-        {assignedUsers.length > 0 && (
-          <div className="pb-4 mb-4 border-b border-white/[0.06]">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Assigned</h4>
-            <div className="space-y-2">
-              {assignedUsers.map((u) => (
-                <div key={u.username} className="flex items-center gap-2">
-                  <ProfileIcon name={u.name} avatar={u.avatar} size="sm" />
-                  <span className="text-sm text-white">{u.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Activity — first batch (top) */}
+        {/* Activity — below the 3-col row on mobile */}
         {activities.length > 0 && (
-          <div className="pb-4 mb-4 border-b border-white/[0.06]">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Activity</h4>
-            <div className="space-y-1.5">
-              {activities.slice(0, 3).map((a) => (
-                <div key={a.id} className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{
+          <div className="pt-3 mt-3 border-t border-white/[0.06] lg:pt-0 lg:mt-0 lg:border-t-0 lg:pb-4 lg:mb-4 lg:border-b">
+            <h4 className="text-[10px] lg:text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 lg:mb-2">Activity</h4>
+            <div className="space-y-1 lg:space-y-1.5">
+              {activities.map((a) => (
+                <div key={a.id} className="flex items-start gap-1.5 lg:gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full mt-1 lg:mt-1.5 shrink-0" style={{
                     backgroundColor: a.action === 'assigned' ? '#d4a574' :
                       a.action === 'status_changed' ? '#f59e0b' :
                       a.action === 'priority_changed' ? '#ef4444' :
                       '#6b7280'
                   }} />
-                  <span className="text-xs text-gray-400 leading-relaxed">{a.detail}</span>
+                  <span className="text-[10px] lg:text-xs text-gray-400 leading-relaxed">{a.detail}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* CC — only show when no admin sidebar */}
-        {cc.length > 0 && !sidebar && (
-          <div className="pb-4 mb-4 border-b border-white/[0.06]">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">CC</h4>
-            <div className="flex flex-wrap gap-1.5">
-              {cc.map((username) => (
-                <span key={username} className="text-xs px-2 py-0.5 rounded-full bg-white/[0.06] text-gray-400">@{username}</span>
               ))}
             </div>
           </div>
@@ -151,26 +154,6 @@ export default function TicketDetails({ ticket, showInternalNotes = false, activ
 
         {/* Admin controls slot */}
         {sidebar}
-
-        {/* Activity — remaining items (lower, aligned with responses) */}
-        {activities.length > 3 && (
-          <div className="pt-4 mt-4 border-t border-white/[0.06]">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Activity</h4>
-            <div className="space-y-1.5">
-              {activities.slice(3).map((a) => (
-                <div key={a.id} className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{
-                    backgroundColor: a.action === 'assigned' ? '#d4a574' :
-                      a.action === 'status_changed' ? '#f59e0b' :
-                      a.action === 'priority_changed' ? '#ef4444' :
-                      '#6b7280'
-                  }} />
-                  <span className="text-xs text-gray-400 leading-relaxed">{a.detail}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -212,9 +195,9 @@ function DescriptionWithEmbeds({ text, images = [] }: { text: string; images?: s
     <>
       {parts.map((part, i) =>
         part.type === 'loom' ? (
-          <div key={i} className="my-3 rounded-lg overflow-hidden" style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+          <div key={i} className="my-3 -mx-8 sm:mx-0 rounded-none sm:rounded-lg overflow-hidden" style={{ position: 'relative', paddingBottom: 'clamp(56.25%, 75vw, 56.25%)', height: 0 }}>
             <iframe
-              src={`https://www.loom.com/embed/${part.value}`}
+              src={`https://www.loom.com/embed/${part.value}?hide_owner=true&hide_share=true&hide_title=true`}
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
               frameBorder="0"
               allowFullScreen
